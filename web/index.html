@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="token" content="__TOKEN__">
+  <title>KN5 Garage</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23ff4d2e' stroke-width='4'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23ff4d2e'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/web/style.css">
+  <script type="importmap">
+  {"imports": {
+    "three": "/web/vendor/three/three.module.js",
+    "three/addons/": "/web/vendor/three/addons/"
+  }}
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" stroke-width="4"/>
+        <circle cx="20" cy="20" r="5" fill="currentColor"/>
+        <path d="M20 4v8M20 28v8M4 20h8M28 20h8" stroke="currentColor" stroke-width="3"/>
+      </svg>
+      <div>
+        <div class="brand-name">KN5 <span>GARAGE</span></div>
+        <div class="brand-sub">Assetto Corsa → glTF / Blender <span id="appVersion"></span></div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="pill blender" id="blenderBtn" title="Blender is used for 'Open in Blender' and FBX">
+        <span class="pill-label">Blender</span><span id="blenderState" class="pill-value" data-i18n>checking…</span>
+      </button>
+      <button class="pill" id="outPill" title="Where exported files are saved">
+        <span class="pill-label" data-i18n>Output</span><span id="outPath" class="pill-value">…</span>
+      </button>
+      <button class="btn ghost" id="outChange" data-i18n>Change</button>
+      <button class="btn ghost" id="outOpen" data-i18n>Open</button>
+      <button class="btn ghost" id="historyBtn" data-i18n>History</button>
+      <button class="btn" id="exportsBtn"><span data-i18n>Exports</span> <span class="count" id="exportsCount">0</span></button>
+      <select class="select small" id="langSel" data-i18n-title="Language" title="Language" aria-label="Language"></select>
+    </div>
+  </header>
+
+  <section class="toolbar" id="garageToolbar">
+    <div class="folder-field">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.6l2 2h8.4A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      <div class="roots" id="roots"></div>
+      <input id="rootInput" spellcheck="false" data-i18n-placeholder="Paste a folder and press Enter, or Add folder (add as many as you like)" placeholder="Paste a folder and press Enter, or Add folder (add as many as you like)">
+      <button class="btn ghost" id="rootBrowse" data-i18n>Add folder</button>
+      <button class="btn primary" id="scanBtn" data-i18n>Scan</button>
+    </div>
+    <div class="filters">
+      <input id="search" class="search" data-i18n-placeholder="Search cars, brands, authors, tags…  ( / )" placeholder="Search cars, brands, authors, tags…  ( / )">
+      <div class="seg" id="filterSeg">
+        <button data-f="all" class="on" data-i18n>All</button>
+        <button data-f="fav" data-i18n>Favourites</button>
+        <button data-f="ok" data-i18n>Ready</button>
+        <button data-f="protected" data-i18n>Protected</button>
+        <button data-f="bad" data-i18n>Unreadable</button>
+        <button data-f="dup" data-i18n>Duplicates</button>
+        <button data-f="issues" data-i18n>Issues</button>
+      </div>
+    </div>
+  </section>
+  <section class="stats" id="libStats" hidden></section>
+
+  <main class="layout" id="garageView">
+    <section class="list-col">
+      <div class="list-head">
+        <div class="muted"><span id="listCount">No folder scanned yet</span> <span id="scanTime" class="dim"></span></div>
+        <div class="list-actions">
+          <button class="btn ghost small" id="skinsBtn" data-i18n>Skins</button>
+          <button class="btn ghost small" id="spaceBtn" data-i18n>Disk space</button>
+          <button class="btn ghost small" id="csvBtn" title="Save the cars shown as a spreadsheet (CSV)">CSV</button>
+          <div class="seg" id="layoutSeg">
+            <button data-l="cards" class="on" data-i18n>Cards</button>
+            <button data-l="table" data-i18n>Table</button>
+          </div>
+          <button class="btn ghost small" id="selectAll" data-i18n>Select all</button>
+          <button class="btn ghost small" id="compareSel" disabled data-i18n>Compare</button>
+          <button class="btn primary small" id="convertSel" disabled data-i18n>Export selected</button>
+        </div>
+      </div>
+      <div id="grid" class="grid"></div>
+      <div id="table" class="table-wrap" hidden></div>
+      <div id="noMatch" class="muted no-match" hidden data-i18n>No cars match the search or filter.</div>
+      <div id="empty" class="empty">
+        <div class="empty-art">
+          <svg viewBox="0 0 120 60" aria-hidden="true">
+            <path d="M10 42c4-12 16-18 30-20l14-10h28l14 12c8 1 14 6 14 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+            <circle cx="34" cy="44" r="8" fill="none" stroke="currentColor" stroke-width="3"/>
+            <circle cx="88" cy="44" r="8" fill="none" stroke="currentColor" stroke-width="3"/>
+            <path d="M4 52h112" stroke="currentColor" stroke-width="2" stroke-dasharray="4 6"/>
+          </svg>
+        </div>
+        <h2 data-i18n>Point me at your cars</h2>
+        <p>Add one or more folders: single cars, <code>assettocorsa\content\cars</code>, or mod folders anywhere.
+          They're scanned together. Car folders are only read, never changed.</p>
+        <button class="btn primary" id="emptyBrowse" data-i18n>Add folder</button>
+      </div>
+    </section>
+
+    <aside class="detail-col" id="detail">
+      <div class="detail-empty muted" data-i18n>Select a car to see its details</div>
+    </aside>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <div class="toast-head">
+      <span id="toastTitle">Exporting</span>
+      <button class="icon-btn" id="toastLogBtn" title="Show log" aria-label="Show log">≡</button>
+      <button class="icon-btn" id="toastClose" title="Close" aria-label="Close">×</button>
+    </div>
+    <div class="bar"><div id="toastBar"></div></div>
+    <div class="toast-msg muted" id="toastMsg"></div>
+    <div class="toast-actions">
+      <button class="btn ghost small" id="toastAction" hidden></button>
+      <button class="btn ghost small" id="toastCancel" hidden data-i18n>Cancel export</button>
+    </div>
+    <pre class="toast-log" id="toastLog" hidden></pre>
+  </div>
+
+  <div class="drawer" id="exports" hidden>
+    <div class="drawer-head"><h3 data-i18n>Exports</h3><button class="icon-btn" id="exportsClose" aria-label="Close">×</button></div>
+    <div id="exportsList"></div>
+  </div>
+
+  <div class="drawer" id="historyDrawer" hidden>
+    <div class="drawer-head"><h3 data-i18n>Export history</h3><button class="icon-btn" id="historyClose" aria-label="Close">×</button></div>
+    <div id="historyList"></div>
+    <button class="btn ghost small" id="historyClear" data-i18n>Clear history</button>
+  </div>
+
+  <div class="viewer" id="viewer" hidden>
+    <div class="viewer-bar">
+      <div class="viewer-title" id="viewerTitle"></div>
+      <div class="seg" id="shadeSeg">
+        <button data-m="tex" class="on" data-i18n>Textured</button>
+        <button data-m="texwire" data-i18n>Texture + wire</button>
+        <button data-m="clay" data-i18n>Clay</button>
+        <button data-m="wire" data-i18n>Wireframe</button>
+      </div>
+      <div class="seg" id="studioSeg">
+        <button data-s="studio" class="on" data-i18n>Studio</button>
+        <button data-s="day" data-i18n>Day</button>
+        <button data-s="night" data-i18n>Night</button>
+      </div>
+      <label class="check"><input type="checkbox" id="spinChk" checked> <span data-i18n>Spin</span></label>
+      <button class="btn ghost small" id="resetView" data-i18n>Reset view</button>
+      <button class="icon-btn big" id="viewerClose" title="Close (Esc)" aria-label="Close viewer">×</button>
+    </div>
+    <div class="viewer-tools" id="viewerTools">
+      <div class="paint-tool" id="paintTool">
+        <span class="tool-label" data-i18n>Paint</span>
+        <input type="color" id="paintPick" value="#c8102e" aria-label="Paint colour">
+        <div class="seg small" id="paintMode">
+          <button data-p="tint" class="on" data-i18n>Tint livery</button>
+          <button data-p="solid" data-i18n>Solid colour</button>
+        </div>
+        <button class="btn ghost small" id="paintReset" data-i18n>Original</button>
+        <button class="btn ghost small" id="partsBtn" title="Choose which parts are the car's paint" data-i18n>Parts…</button>
+        <span class="muted" id="paintInfo"></span>
+        <div class="popover" id="partsList" hidden></div>
+      </div>
+      <label class="tool steer" id="steerTool" hidden><span class="tool-label" data-i18n>Steering</span>
+        <input type="range" id="steerRange" min="-35" max="35" value="0" step="1" aria-label="Steering angle"></label>
+      <button class="btn ghost small toggle" id="lightsBtn" hidden aria-pressed="false" data-i18n>Lights</button>
+      <button class="btn ghost small toggle" id="measureBtn" aria-pressed="false" data-i18n>Measure</button>
+      <span class="measure-info" id="measureInfo"></span>
+      <select class="select small" id="animSel" title="Play the car's animations (doors, wipers…)" hidden></select>
+      <div class="tool-gap"></div>
+      <button class="btn ghost small" id="snapBtn" title="One 1920×1080 picture of this view, saved to output\renders" data-i18n>Snapshot</button>
+      <button class="btn ghost small" id="turntableBtn" title="36 pictures around the car, saved to output\renders" data-i18n>Turntable</button>
+      <button class="btn ghost small" id="videoBtn" title="An 8-second spin video, saved to output\renders" data-i18n>Video</button>
+      <button class="btn small" id="viewerBlender" hidden data-i18n>Open in Blender</button>
+    </div>
+    <div class="skin-strip" id="viewerSkins"></div>
+    <div class="viewer-stage" id="stage"><div class="hover-tip" id="hoverTip" hidden></div></div>
+    <div class="viewer-info" id="viewerInfo"></div>
+  </div>
+
+  <div class="modal" id="exportDlg" hidden>
+    <div class="modal-card">
+      <div class="modal-head"><h3 id="exportTitle">Export</h3><button class="icon-btn" data-close aria-label="Close">×</button></div>
+      <div class="modal-body">
+        <div class="saved-row">
+          <select class="select small" id="savedSel" aria-label="Saved presets"></select>
+          <button class="btn ghost small" id="savedDelete" hidden data-i18n>Delete</button>
+        </div>
+        <div class="field-label" data-i18n>Preset</div>
+        <div class="presets" id="presetList" role="radiogroup"></div>
+        <label class="check"><input type="checkbox" id="paintOn"> <span data-i18n>Change the paint colour</span></label>
+        <div class="paint-row" id="paintRow" hidden>
+          <input type="color" id="exportPaint" value="#c8102e" aria-label="Paint colour">
+          <div class="seg small" id="exportPaintMode">
+            <button data-p="tint" class="on" data-i18n>Tint livery</button>
+            <button data-p="solid" data-i18n>Solid colour</button>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" id="lightsOnExp"> <span data-i18n>Headlights and tail lights on</span></label>
+        <div class="field-row">
+          <label class="field"><span data-i18n>Texture size</span>
+            <select class="select small" id="texSize"></select></label>
+          <label class="check"><input type="checkbox" id="jpegOn"> <span data-i18n>Smaller files: colour textures as JPEG</span></label>
+        </div>
+        <label class="check"><input type="checkbox" id="blenderScript" checked> <span data-i18n>Also write a Blender setup script (studio scene, sorted parts)</span></label>
+        <div class="muted small-note" id="exportNote"></div>
+        <div class="save-row">
+          <input id="saveName" class="search small-input" maxlength="60" data-i18n-placeholder="Name for these settings" placeholder="Name for these settings">
+          <button class="btn ghost small" id="saveBtn" data-i18n>Save as…</button>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" data-close data-i18n>Cancel</button>
+        <button class="btn primary" id="exportGo" data-i18n>Start export</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="compareDlg" hidden>
+    <div class="modal-card wide">
+      <div class="modal-head"><h3 data-i18n>Compare cars</h3><button class="icon-btn" data-close aria-label="Close">×</button></div>
+      <div class="modal-body" id="compareBody"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="spaceDlg" hidden>
+    <div class="modal-card wide">
+      <div class="modal-head"><h3 data-i18n>Disk space</h3><button class="icon-btn" data-close aria-label="Close">×</button></div>
+      <div class="modal-body" id="spaceBody"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="skinsDlg" hidden>
+    <div class="modal-card wide tall">
+      <div class="modal-head"><h3 data-i18n>Skin gallery</h3><button class="icon-btn" data-close aria-label="Close">×</button></div>
+      <div class="modal-body">
+        <input id="skinSearch" class="search" data-i18n-placeholder="Search skins, drivers, teams, numbers…" placeholder="Search skins, drivers, teams, numbers…">
+        <div class="skin-gallery" id="skinGallery"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/web/app.js"></script>
+</body>
+</html>

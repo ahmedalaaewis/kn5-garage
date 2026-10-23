@@ -1,0 +1,52 @@
+name: Bug report
+description: Something doesn't work, or an export looks wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please don't attach mod files you don't have the right to share;
+        the export report and a screenshot are usually enough.
+        **Security problems:** please report them privately instead (see SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Export report
+      description: The list shown under the export result in the app (or the console output of the command line).
+      render: text
+  - type: input
+    id: car
+    attributes:
+      label: Which car?
+      description: Name and where it can be downloaded, if it's public.
+  - type: dropdown
+    id: how
+    attributes:
+      label: How do you run KN5 Garage?
+      options:
+        - KN5Garage.exe
+        - KN5 Garage.bat / python app.py
+        - Command line (kn5_to_glb.py / KN5Garage convert)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown next to the logo in the app (for example v1.0.0).
+  - type: input
+    id: system
+    attributes:
+      label: Windows version and browser
+      placeholder: Windows 11, Edge 130
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or anything else

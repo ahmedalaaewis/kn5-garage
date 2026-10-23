@@ -1,0 +1,36 @@
+# Personal data: never commit these
+# - settings.json: your car folders, output folder and Blender path
+# - library.json: your favourites and tags
+# - output/: your exported cars, renders and caches
+# - .dev/: local test data
+settings.json
+library.json
+output/
+.dev/
+*.blend
+*.blend1
+
+# Build output (build_exe.bat)
+build/
+dist/
+packaging/kn5garage.ico
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude Code local settings (launch.json is shared and has no personal paths)
+.claude/settings.local.json

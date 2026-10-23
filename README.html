@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KN5 Garage</title>
+  <meta name="description" content="Turn Assetto Corsa car mods into files for Blender, game engines, 3D viewers and 3D printers, from a browser-based app that runs on your PC.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23ff4d2e' stroke-width='4'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23ff4d2e'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #0a0c0f; --surface: #14181d; --surface-2: #1b2027; --border: #262d36; --text: #e9eef3;
+      --muted: #8a96a3; --accent: #ff4d2e; --accent-2: #ff7a45; --ok: #2fd38a; --blue: #4da3ff;
+      --display: "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
+      --body: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+      color-scheme: dark;
+    }
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) {
+        --bg: #f6f7f9; --surface: #ffffff; --surface-2: #eef1f4; --border: #dde2e8; --text: #12161b;
+        --muted: #5b6672; --accent: #e23d1f; --accent-2: #f0612f; --ok: #12965c; --blue: #1f6fd1; color-scheme: light;
+      }
+    }
+    :root[data-theme="light"] {
+      --bg: #f6f7f9; --surface: #ffffff; --surface-2: #eef1f4; --border: #dde2e8; --text: #12161b;
+      --muted: #5b6672; --accent: #e23d1f; --accent-2: #f0612f; --ok: #12965c; --blue: #1f6fd1; color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--body); }
+    a { color: var(--blue); }
+    code { font-family: Consolas, ui-monospace, monospace; font-size: .9em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
+    html, body { overflow-x: hidden; }
+    main, header, footer { min-width: 0; }
+    pre { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; overflow-x: auto; font-size: 13.5px; line-height: 1.5; }
+    pre code { background: none; padding: 0; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+    header.hero {
+      padding: 56px 0 28px;
+      background: radial-gradient(900px 380px at 80% -10%, rgba(255, 77, 46, .16), transparent 60%),
+                  radial-gradient(700px 300px at -10% 120%, rgba(77, 163, 255, .08), transparent 60%);
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand svg { width: 52px; height: 52px; color: var(--accent); flex: none; }
+    h1 { font: 700 clamp(34px, 6vw, 54px)/1 var(--display); letter-spacing: .05em; margin: 0; }
+    h1 span { color: var(--accent); }
+    .tagline { font-size: clamp(17px, 2.4vw, 20px); color: var(--muted); max-width: 760px; margin: 18px 0 26px; }
+    .cta { display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 11px; font-weight: 600; text-decoration: none; border: 1px solid var(--border); color: var(--text); background: var(--surface); }
+    .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+    .shot-main { margin: 30px 0 8px; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 30px 70px -40px #000; }
+    .shot-main img, .gallery img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+    .note { color: var(--muted); font-size: 13.5px; }
+    section { padding: 34px 0; border-top: 1px solid var(--border); }
+    h2 { font: 700 26px var(--display); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 16px; }
+    h3 { font: 700 19px var(--display); letter-spacing: .04em; text-transform: uppercase; margin: 26px 0 8px; }
+    .features { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+    .feature { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+    .feature b { display: block; font: 700 17px var(--display); letter-spacing: .03em; margin-bottom: 4px; }
+    .feature p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    .gallery figure { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .gallery figcaption { padding: 10px 14px; font-size: 14px; color: var(--muted); }
+    .gallery figcaption b { color: var(--text); }
+    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { font: 700 13px var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+    td:first-child { font-weight: 700; white-space: nowrap; }
+    .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+    ul { padding-left: 20px; }
+    li { margin: 4px 0; }
+    .steps { counter-reset: s; list-style: none; padding: 0; display: grid; gap: 10px; }
+    .steps li { counter-increment: s; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px 12px 50px; position: relative; margin: 0; }
+    .steps li::before { content: counter(s); position: absolute; left: 14px; top: 11px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 14px/24px var(--display); text-align: center; }
+    .pill-list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; }
+    .pill-list li { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 14px; margin: 0; }
+    .security li::marker { content: "✓  "; color: var(--ok); }
+    footer { padding: 30px 0 50px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--border); }
+    .theme-toggle { position: fixed; top: 14px; right: 14px; z-index: 5; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+    .lightbox { position: fixed; inset: 0; z-index: 10; background: rgba(0, 0, 0, .86); display: grid; place-items: center; padding: 16px; cursor: zoom-out; }
+    .lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; }
+    [hidden] { display: none !important; }
+    @media (max-width: 600px) {
+      .gallery { grid-template-columns: 1fr; }
+      td:first-child { white-space: normal; }
+      header.hero { padding-top: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch light or dark theme">◐ Theme</button>
+
+  <header class="hero">
+    <div class="wrap">
+      <div class="brand">
+        <svg viewBox="0 0 40 40" aria-hidden="true">
+          <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" stroke-width="4"/>
+          <circle cx="20" cy="20" r="5" fill="currentColor"/>
+          <path d="M20 4v8M20 28v8M4 20h8M28 20h8" stroke="currentColor" stroke-width="3"/>
+        </svg>
+        <h1>KN5 <span>GARAGE</span></h1>
+      </div>
+      <p class="tagline">Turn Assetto Corsa car mods into files for Blender, game engines, 3D viewers and 3D printers,
+        from a browser-based app that runs entirely on your PC.</p>
+      <div class="cta">
+        <a class="btn primary" href="#run">Download and run</a>
+        <a class="btn" href="#pictures">Pictures</a>
+        <a class="btn" href="README.md">README.md</a>
+      </div>
+      <figure class="shot-main">
+        <img src="docs/screenshots/library.png" alt="The library: cards with previews, favourites, tags, duplicate and issue badges, and the details of the selected car" width="1600" height="1000">
+      </figure>
+      <p class="note">The cars in these pictures are fictional demo cars made by <code>tools/make_demo_garage.py</code>.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section>
+      <h2>What it does</h2>
+      <div class="features">
+        <div class="feature"><b>Your whole collection</b><p>Previews, authors, specs, power curves, skins, CSP features, favourites and your own tags.</p></div>
+        <div class="feature"><b>Export anywhere</b><p>glTF (.glb), OBJ, FBX (through Blender) and STL, with presets for renders, game engines and 3D printing.</p></div>
+        <div class="feature"><b>3D before you export</b><p>Paint colours, steering, lights, day and night studios, animations, measuring, pictures and videos.</p></div>
+        <div class="feature"><b>Blender ready</b><p>One click opens an export in a studio scene with sorted parts, lights and a camera.</p></div>
+        <div class="feature"><b>Tidy up</b><p>Finds duplicates and identical copies, shows disk space, and lists missing files.</p></div>
+        <div class="feature"><b>13 languages</b><p>English, Deutsch, Español, Français, Italiano, Polski, Português, Türkçe, Русский, العربية, 日本語, 한국어, 中文.</p></div>
+        <div class="feature"><b>Private and read-only</b><p>Runs on your PC only, loads nothing from the internet, and never changes your car folders.</p></div>
+      </div>
+    </section>
+
+    <section id="run">
+      <h2>Download and run</h2>
+      <h3>Windows, no install</h3>
+      <ol class="steps">
+        <li>Download <code>KN5Garage-&lt;version&gt;-windows.zip</code> from the project's <b>Releases</b> page (each release lists a SHA-256 checksum).</li>
+        <li>Unzip it anywhere and double-click <b>KN5Garage.exe</b>. The app opens in your browser.</li>
+        <li>Keep the small console window open while you use the app; close it to quit. Settings and exports are kept next to the <code>.exe</code>.</li>
+      </ol>
+      <h3>From source (Windows, macOS, Linux)</h3>
+      <ol class="steps">
+        <li>Install Python 3.9 or newer from python.org (on Windows tick "Add Python to PATH").</li>
+        <li>Double-click <b>KN5 Garage.bat</b> (Windows), or run <code>python -m pip install -r requirements.txt</code> then <code>python app.py</code>.</li>
+      </ol>
+    </section>
+
+    <section id="pictures">
+      <h2>Pictures</h2>
+      <div class="gallery">
+        <figure><img src="docs/screenshots/viewer-night.png" alt="3D viewer at night with the lights on and the front wheels turned" width="1600" height="900" loading="lazy"><figcaption><b>Night studio</b>, lights on, steering turned</figcaption></figure>
+        <figure><img src="docs/screenshots/viewer-day.png" alt="3D viewer in daylight with the skin strip" width="1600" height="900" loading="lazy"><figcaption><b>Day studio</b> and the skin strip</figcaption></figure>
+        <figure><img src="docs/screenshots/viewer-wire.png" alt="Texture and wireframe view" width="1600" height="900" loading="lazy"><figcaption><b>Texture + wireframe</b> view</figcaption></figure>
+        <figure><img src="docs/screenshots/export.png" alt="The export dialog with presets and options" width="1600" height="1000" loading="lazy"><figcaption><b>Export</b>: presets, paint, lights, textures, saved presets</figcaption></figure>
+        <figure><img src="docs/screenshots/compare.png" alt="Comparing four cars: specs with the best values highlighted and their power curves" width="1600" height="1000" loading="lazy"><figcaption><b>Compare</b> up to six cars</figcaption></figure>
+        <figure><img src="docs/screenshots/table.png" alt="The sortable library table" width="1600" height="1000" loading="lazy"><figcaption><b>Table</b> view, sortable by any column</figcaption></figure>
+        <figure><img src="docs/screenshots/disk-space.png" alt="Disk space per car, and what identical copies waste" width="1600" height="1000" loading="lazy"><figcaption><b>Disk space</b> and identical copies</figcaption></figure>
+        <figure><img src="docs/screenshots/skin-gallery.png" alt="All skins of all cars in one searchable gallery" width="1600" height="1000" loading="lazy"><figcaption><b>Skin gallery</b> across all cars</figcaption></figure>
+        <figure><img src="docs/screenshots/arabic.png" alt="The app in Arabic, laid out right to left" width="1600" height="1000" loading="lazy"><figcaption><b>13 languages</b>, Arabic right to left</figcaption></figure>
+        <figure><img src="docs/screenshots/japanese.png" alt="The 3D viewer in Japanese" width="1600" height="900" loading="lazy"><figcaption>Japanese</figcaption></figure>
+        <figure><img src="docs/screenshots/italiano.png" alt="The app in Italian" width="1600" height="1000" loading="lazy"><figcaption>Italiano</figcaption></figure>
+      </div>
+    </section>
+
+    <section>
+      <h2>Using the app</h2>
+      <h3>Library</h3>
+      <ul>
+        <li><b>Folders:</b> add as many as you like, or paste a path and press Enter: single cars, your <code>content\cars</code> folder, mod folders anywhere. Rescans are fast: unchanged cars come from a cache.</li>
+        <li><b>Cards or Table</b>, sorted by any column; the stats bar filters with one click; press <code>/</code> to search (your tags included).</li>
+        <li><b>Favourites and tags:</b> click the ★, and add your own tags in a car's details.</li>
+        <li><b>Duplicates:</b> <i>Identical</i> finds copies of the same model under any name; <b>Disk space</b> shows what removing them would free.</li>
+        <li><b>Skin gallery:</b> every skin of every car, searchable by name, driver, team or number.</li>
+        <li><b>Details:</b> specs, power/torque chart, skins, files, issues, Custom Shaders Patch features, real numbers from an unpacked <code>data</code> folder, Content Manager variants.</li>
+        <li><b>Compare</b> 2 to 6 cars, and save the library as a <b>CSV</b> spreadsheet.</li>
+      </ul>
+      <h3>Export presets</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Preset</th><th>Gives you</th></tr></thead>
+          <tbody>
+            <tr><td>Render</td><td>Full-quality <code>.glb</code> for Blender: clearcoat paint, metallic/roughness from <code>txMaps</code>, glass, chrome and carbon materials, part pivots, animations, and the driver rigged when its bones are in the model.</td></tr>
+            <tr><td>Game</td><td>The car's lower-detail LOD model with 1K textures.</td></tr>
+            <tr><td>Print</td><td>One STL mesh in millimetres, Z up, for slicers.</td></tr>
+            <tr><td>OBJ</td><td><code>.obj</code> + <code>.mtl</code> + a textures folder, for older 3D tools.</td></tr>
+            <tr><td>FBX</td><td>Made by Blender in the background (textures embedded), for Unity and Unreal.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Options: paint colour (tint or solid, with the paint parts chosen automatically or by clicking the car),
+        headlights on, texture size, JPEG textures, a Blender setup script, and saved presets.
+        Each export gets a report, and <b>History</b> keeps past exports with an <b>Again</b> button.</p>
+      <h3>3D viewer</h3>
+      <ul class="pill-list">
+        <li>Textured · wire · clay</li><li>Studio · day · night</li><li>Shadows</li><li>Paint and paint parts</li>
+        <li>Steering</li><li>Lights</li><li>Animations</li><li>Measure</li><li>Part names on hover</li>
+        <li>Snapshot</li><li>Turntable</li><li>Video</li><li>Open in Blender</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Command line</h2>
+<pre><code>KN5Garage convert &lt;folder&gt; [-o OUTPUT] [--skin NAME | --skin none] [--preset render|game|print|obj|fbx]
+                           [--paint #c8102e] [--paint-mode tint|solid] [--texture-size 1024]
+                           [--jpeg 85] [--lights-on] [--keep-normal-green]</code></pre>
+      <p class="note">Also available as <code>convert.bat</code> and <code>python kn5_to_glb.py</code>.</p>
+    </section>
+
+    <section>
+      <h2>Privacy and security</h2>
+      <ul class="security">
+        <li>The app only listens on <code>127.0.0.1</code>: other computers can't reach it.</li>
+        <li>Websites can't control it: a random per-start token, and cross-site requests, DNS rebinding and framing are blocked.</li>
+        <li>The page loads nothing from the internet: no web fonts, analytics or update checks. Nothing is logged.</li>
+        <li>Paths on screen start with <code>~</code> instead of your Windows user name.</li>
+        <li>Car folders are only read; mod files are treated as untrusted and fuzz-tested.</li>
+      </ul>
+      <p>Details: <a href="SECURITY.md">SECURITY.md</a>. Some authors protect their cars; KN5 Garage exports only their shape and never tries to break the protection. Please respect mod authors.</p>
+    </section>
+
+    <section>
+      <h2>Building and contributing</h2>
+      <ul>
+        <li><code>run_tests.bat</code> runs the unit, security, web and end-to-end tests.</li>
+        <li><code>build_exe.bat</code> builds <code>dist\KN5Garage.exe</code>; pushing a tag like <code>v1.1.0</code> builds, tests and publishes it on GitHub.</li>
+        <li><code>tools/make_demo_garage.py</code> builds the demo cars; <code>tools/screenshots.py</code> remakes these pictures.</li>
+      </ul>
+      <p>How the code is organised and the project rules: <a href="CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      KN5 Garage is released under the <a href="LICENSE">MIT licence</a>. Third-party software and trademarks:
+      <a href="THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>. Not affiliated with Kunos Simulazioni, 505 Games or the Blender Foundation.
+    </div>
+  </footer>
+
+  <div class="lightbox" id="lightbox" hidden><img id="lightboxImg" alt=""></div>
+
+  <script>
+    // Click a picture to see it full size; click again or press Esc to close.
+    const box = document.getElementById('lightbox');
+    const boxImg = document.getElementById('lightboxImg');
+    document.querySelectorAll('.shot-main img, .gallery img').forEach((img) => {
+      img.addEventListener('click', () => { boxImg.src = img.src; boxImg.alt = img.alt; box.hidden = false; });
+    });
+    box.addEventListener('click', () => { box.hidden = true; });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') box.hidden = true; });
+    // Light / dark theme: follows the system, the button switches it (remembered when possible)
+    const root = document.documentElement;
+    try { const saved = localStorage.getItem('kn5-readme-theme'); if (saved) root.dataset.theme = saved; } catch (e) { /* private mode */ }
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+      root.dataset.theme = dark ? 'light' : 'dark';
+      try { localStorage.setItem('kn5-readme-theme', root.dataset.theme); } catch (e) { /* private mode */ }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+name: release
+
+# Push a tag like v1.0.0 to build KN5Garage.exe, test it, and publish it on a GitHub release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # to create the release and upload the files
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -r requirements.txt "pyinstaller>=6.6,<7"
+      - name: Test the code
+        run: python -m unittest discover -s tests
+      - name: Build KN5Garage.exe
+        shell: cmd
+        run: build_exe.bat ci
+      - name: Test the exe from a clean folder
+        run: python packaging/test_exe.py dist/KN5Garage.exe
+      - name: Package
+        shell: pwsh
+        run: |
+          $name = "KN5Garage-${{ github.ref_name }}-windows"
+          New-Item -ItemType Directory $name | Out-Null
+          Copy-Item dist/KN5Garage.exe, README.md, README.html, LICENSE, THIRD_PARTY_NOTICES.md, SECURITY.md $name
+          New-Item -ItemType Directory "$name/docs" | Out-Null
+          Copy-Item -Recurse docs/screenshots "$name/docs/screenshots"
+          Compress-Archive -Path $name -DestinationPath "$name.zip"
+          (Get-FileHash "$name.zip" -Algorithm SHA256).Hash.ToLower() + "  $name.zip" | Out-File -Encoding ascii "$name.zip.sha256"
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $name = "KN5Garage-${{ github.ref_name }}-windows"
+          gh release create "${{ github.ref_name }}" "$name.zip" "$name.zip.sha256" --title "KN5 Garage ${{ github.ref_name }}" --generate-notes

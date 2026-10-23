@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "kn5-garage",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["app.py", "--port", "8642", "--no-browser", "--settings", ".dev/settings.json", "--out", ".dev/out"],
+      "port": 8642
+    },
+    {
+      "name": "readme",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8765", "--bind", "127.0.0.1"],
+      "port": 8765
+    }
+  ]
+}

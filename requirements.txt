@@ -1,0 +1,4 @@
+# Runtime dependencies (tested with numpy 2.2 and Pillow 11.3 on Python 3.10).
+# Pillow 10.3+ has fixes for image-decoding security issues.
+numpy>=1.24,<3
+Pillow>=10.3.0,<13

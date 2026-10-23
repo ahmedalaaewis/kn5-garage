@@ -1,0 +1,33 @@
+[project]
+name = "kn5garage"
+version = "1.1.0"
+description = "Convert Assetto Corsa car models (.kn5) to glTF (.glb), OBJ, FBX and STL, with a local web UI"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.24,<3", "Pillow>=10.3.0,<13"]
+
+[project.scripts]
+kn5-garage = "kn5garage.__main__:main"
+kn5-to-glb = "kn5garage.cli:main"
+
+[tool.setuptools]
+packages = ["kn5garage"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "S"]
+ignore = [
+  "E702",  # a few short `a; b` lines in the matrix code
+  "S101",  # assert in tests
+  "S603",  # subprocess with a fixed argument list (Blender, Explorer)
+  "S606",  # os.startfile on a folder we chose
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "E731"]
+"tools/*" = ["S", "E731"]
+"packaging/*" = ["S"]
