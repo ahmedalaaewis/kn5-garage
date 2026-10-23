@@ -305,7 +305,11 @@ def build_car(spec, folder):
         (car / "data").mkdir(exist_ok=True)
         (car / "data" / "car.ini").write_text("[BASIC]\nTOTALMASS=%d\n[FUEL]\nMAX_FUEL=80\n" % spec["weight"])
         (car / "data" / "drivetrain.ini").write_text("[TRACTION]\nTYPE=RWD\n[GEARS]\nCOUNT=6\n")
-        (car / "data" / "engine.ini").write_text("[ENGINE_DATA]\nLIMITER=8200\n[TURBO_0]\nMAX_BOOST=1.2\n")
+        (car / "data" / "engine.ini").write_text("[HEADER]\nPOWER_CURVE=power.lut\n[ENGINE_DATA]\nLIMITER=8200\n"
+                                                 "[TURBO_0]\nMAX_BOOST=1.2\n")
+        (car / "data" / "power.lut").write_text("".join(  # torque (Nm) before boost, by rpm
+            "%d|%d\n" % (r, round(spec["torque"] / 2.2 * f))
+            for r, f in ((1000, .55), (3000, .85), (5000, 1), (7000, .9), (8200, .75))))
     return car
 
 

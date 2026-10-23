@@ -13,7 +13,7 @@ import { flash } from './toast.js';
 const view = { car: null, file: null, name: '' };  // what the viewer is showing
 let paintOn = false;
 
-const viewer = new Viewer3D($('#stage'), {
+export const viewer = new Viewer3D($('#stage'), {
   spinBox: $('#spinChk'),
   onInfo: (info) => {
     infoChips(info);
@@ -34,6 +34,7 @@ const viewer = new Viewer3D($('#stage'), {
     tip.style.transform = `translate(${Math.round(x + 14)}px, ${Math.round(y + 14)}px)`;
   },
   onPick: (part) => {
+    if (!$('#partsPanel').hidden) return emit('viewer-pick', part);  // the parts editor is choosing
     if ($('#partsList').hidden || !part.material) return;  // picking parts only while the list is open
     const chosen = new Set(currentParts());
     chosen.has(part.material) ? chosen.delete(part.material) : chosen.add(part.material);
@@ -269,6 +270,7 @@ async function runVideo() {
 
 export function closeViewer() {
   $('#viewer').hidden = true;
+  emit('viewer-closed');
   setMeasure(false);
   viewer.stopAnimations();
   viewer.stop();

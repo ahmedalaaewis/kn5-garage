@@ -1,7 +1,8 @@
 # KN5 Garage
 
-Turn Assetto Corsa car mods (`.kn5`) into files for **Blender**, **game engines**, **3D viewers**
-and **3D printers**, from a browser-based app that runs entirely on your PC.
+A garage for Assetto Corsa car mods that runs entirely on your PC: browse your collection, edit
+cars (power, weight, liveries, parts), install mods, and turn `.kn5` cars into files for
+**Blender**, **game engines**, **3D viewers** and **3D printers**.
 
 ![The library: cards with previews, favourites, tags, duplicate and issue badges, and the details of the selected car](docs/screenshots/library.png)
 
@@ -11,9 +12,16 @@ and **3D printers**, from a browser-based app that runs entirely on your PC.
 - Look at any car in 3D first: paint colours, steering, lights, day / night studios,
   animations, measuring, and save pictures, turntables and videos.
 - Open exports in Blender with a ready-made studio scene.
+- **Edit cars:** power, torque, weight, fuel, gearing and turbo; the specs in the game menus;
+  your own **livery** painted in Photoshop, Illustrator, GIMP or any image program with a live 3D
+  preview; **parts** hidden, removed, moved, recoloured or swapped from other cars and 3D files.
+  Save as a new car, or change the original with a backup you can undo.
+- **Import:** install downloaded mods and skin packs (`.zip`, `.7z`, `.rar`), open `.glb` /
+  `.gltf` / `.obj` / `.fbx` files, and make a new car from a 3D model (beta).
 - In 13 languages: English, Deutsch, Español, Français, Italiano, Polski, Português, Türkçe,
   Русский, العربية (right to left), 日本語, 한국어 and 中文.
-- Your car folders are never changed, and nothing leaves your computer.
+- Exports never change your cars, edits always ask first and keep a backup, and nothing leaves
+  your computer.
 
 *The cars in these pictures are fictional demo cars made by `tools/make_demo_garage.py`.
 A web version of this page with all pictures: [README.html](README.html).*
@@ -38,6 +46,10 @@ Each release lists a SHA-256 checksum for the zip.
 |---|---|
 | ![3D viewer at night with the lights on and the front wheels turned](docs/screenshots/viewer-night.png) | ![3D viewer in daylight with the skin strip](docs/screenshots/viewer-day.png) |
 | **Night studio**, lights on, steering turned | **Day studio** and the skin strip |
+| ![The parts editor: a part selected on the car, with move, colour and swap tools](docs/screenshots/parts-editor.png) | ![The livery studio: paint textures to edit in an image program, with a live 3D preview](docs/screenshots/livery.png) |
+| **Parts editor**: hide, move, recolour, swap | **Livery studio** with live preview |
+| ![The Edit tab: physics, menu specs and power curve](docs/screenshots/edit.png) | ![Import: mods, skin packs, 3D files, and a car from a 3D model](docs/screenshots/import.png) |
+| **Edit** power, weight, gearing and specs | **Import** mods, skins and 3D files |
 | ![Texture and wireframe view](docs/screenshots/viewer-wire.png) | ![The export dialog with presets and options](docs/screenshots/export.png) |
 | **Texture + wireframe** view | **Export**: presets, paint, lights, textures, saved presets |
 | ![Comparing four cars: specs with the best values highlighted and their power curves](docs/screenshots/compare.png) | ![The sortable library table](docs/screenshots/table.png) |
@@ -99,6 +111,44 @@ and any problems, and **History** keeps past exports with an **Again** button.
 - **Measure**: click two points for the distance. Hovering shows each part's name and material.
 - **Snapshot** (1920×1080), **Turntable** (36 pictures) and **Video** (8-second WebM) save to `output\renders\<car>\`.
 
+### Editing a car
+
+The **Edit** tab of a car. Every save asks where it goes: **Save as a new car** (a copy next to
+the original, shown in the game as its own car and in Content Manager as a variant), or **Change
+the original** (every file it touches is backed up first; **Undo saved changes** in the same tab
+puts them back). Protected cars can't be edited.
+
+- **Specs:** the real physics from an unpacked `data` folder (mass, fuel, rev limiter, final drive,
+  turbo boost, and engine power as a percentage of the torque curve), and the specs shown in the
+  game menus, which can be filled in from the physics with fresh power and torque charts. Cars
+  whose physics are packed in `data.acd` can still get new menu specs; the packed physics are
+  never decrypted.
+- **New livery…:** the paint textures open as PNG files in the program you pick (Photoshop,
+  Illustrator, GIMP, Krita, Paint.NET, Affinity and Inkscape are found automatically, others can
+  be added). Every time you save there, the car in the 3D view updates. **UV guide** gives the
+  paint layout as lines for a guide layer, **Use a picture…** drops in a finished image.
+  **Install as a skin…** writes a new skin folder with `ui_skin.json`, a preview and a livery icon.
+- **Edit parts…:** click a part on the car or in the list. **Hide** or **Remove** it, **move,
+  rotate and scale** it with exact numbers, give it a **colour** (tint keeps its details, or
+  solid) or another **material**, or **swap in a part** from another car or a 3D file, fitted to
+  the size and place of the selected part. Undo and redo as much as you like; nothing is written
+  until **Save…**.
+
+### Importing
+
+**Import** in the top bar:
+
+- **Install a mod or skin pack:** choose a downloaded `.zip` (`.7z` and `.rar` need
+  [7-Zip](https://www.7-zip.org)). The app lists the cars and skins inside; tick what to install,
+  choose the folder, and whether to skip, install next to, or replace what is already there
+  (replaced folders go to `output\backups\replaced`). Programs and scripts inside archives are
+  never unpacked.
+- **Open a 3D file:** `.glb`, `.gltf`, `.obj`, `.fbx` (through Blender) or `.kn5`, to look at in
+  the viewer or save as `.obj`, `.stl` or `.fbx`.
+- **Make a car from a 3D model (beta):** pick a donor car and a model. The new car keeps the
+  donor's physics, sound, wheels, cockpit and driver; the model replaces its body, scaled to fit.
+  It opens in the parts editor so you can adjust it, then **Save…** it as a new car.
+
 ### Blender
 
 The top bar shows whether Blender was found (click it to locate `blender.exe`). **Open in Blender**
@@ -139,10 +189,13 @@ Files are named `<car>__<skin>.glb`, or `<car>.glb` when no skin is used; other 
 
 Details and how it is tested: [SECURITY.md](SECURITY.md).
 
-## Your car folders are never changed
+## Your car folders are safe
 
-Car folders are only read. Exports go to the output folder, and the converter refuses an output
-folder inside a car folder. The smoke test checks this by fingerprinting every file before and after.
+Exporting only reads car folders: exports go to the output folder, and the converter refuses an
+output folder inside a car folder (the smoke test fingerprints every file before and after).
+Editing writes to a car only when you save, and asks each time: a new copy, or the original with
+a backup of every file it changes, which **Undo saved changes** restores. Installing a mod that
+replaces a car or skin moves the old folder to the backups first.
 
 ## Protected cars
 
@@ -157,7 +210,7 @@ Please respect mod authors: exports are for your own use unless the author allow
   Drag car folders onto it to include your own cars (they are only read).
 - `build_exe.bat` builds `dist\KN5Garage.exe`; `python packaging/test_exe.py` checks it from a clean folder.
 - `python tools/make_demo_garage.py` builds the demo cars; `python tools/screenshots.py` remakes the pictures.
-- Pushing a tag like `v1.1.0` makes GitHub build, test and publish the `.exe` on a release.
+- Pushing a tag like `v1.2.0` makes GitHub build, test and publish the `.exe` on a release.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how the code is organised and the project rules.
 
@@ -168,7 +221,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how the code is organised and the pro
 - The driver is rigged only when its bones are in the same model and the bind pose matches;
   otherwise it is exported as a static mesh (the report says so).
 - Glass, chrome, carbon and lights are recognised by material names; use **Parts…** for paint.
+- Physics packed in `data.acd` are never decrypted: unpack the `data` folder (for example with
+  Content Manager) to edit how such a car drives.
 - FBX needs Blender. Turntable and video use the browser's WebGL; videos are WebM.
+- The parts editor changes the main model; a car's lower-detail LOD models keep the old parts
+  (cars made from a 3D model get the new body in every LOD).
+- Cars made from a 3D model are a starting point: the model's own wheels don't turn, and the
+  collision shape is the donor's.
+- `.7z` and `.rar` mods need 7-Zip installed; `.zip` works on its own.
 
 ## Licence and credits
 

@@ -21,11 +21,16 @@ Node.js is optional; it runs the web logic tests in `tests/web`.
 | `kn5garage/carfiles.py` | Finding models, LODs, skins and animations in a car folder |
 | `kn5garage/convert.py` | Presets and the converter (`.glb` / `.stl`) |
 | `kn5garage/carinfo.py` | Car details for the UI |
+| `kn5garage/kn5write.py` | Writing `.kn5` models (byte-for-byte the same when nothing changed) |
+| `kn5garage/edits.py`, `physics.py` | Saving edits (new car or original + backup, undo), physics and menu specs |
+| `kn5garage/livery.py`, `editors.py` | The livery studio, finding and starting image programs |
+| `kn5garage/parts.py`, `builder.py` | The parts editor (steps with undo / redo), making a car from a 3D model |
+| `kn5garage/importer.py`, `installer.py` | Reading `.glb` / `.gltf` / `.obj` / `.fbx`, installing mods from archives |
 | `kn5garage/server.py` | The local web server and API |
 | `kn5garage/jobs.py`, `cache.py`, `settings.py`, `userdata.py` | Export queue, scan / preview caches, settings, favourites / tags / history |
 | `kn5garage/blender.py`, `dialogs.py`, `cli.py` | Blender (scene script, FBX), file pickers, command line |
 | `kn5garage/paths.py`, `__main__.py` | Where files live from source and inside `KN5Garage.exe`; the entry point |
-| `web/js/*.js` | The page, one module per part (library, detail, compare, exporter, extras, viewer-ui…) |
+| `web/js/*.js` | The page, one module per part (library, detail, compare, exporter, extras, viewer-ui, editor, livery, parts, importer…) |
 | `web/js/model.js` | Pure front-end logic (sorting, filtering, CSV, paths), tested with Node |
 | `web/js/i18n.js` | Translations (English text is the key) |
 | `web/viewer.js` | The three.js viewer (studios, steering, lights, measuring, hover) |

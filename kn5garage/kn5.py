@@ -46,10 +46,15 @@ class Reader:
         return struct.unpack("<%df" % n, self.read(4 * n))
 
     def string(self):
+        return self.string_raw()[0]
+
+    def string_raw(self):
+        """(text, the exact bytes): names from old tools aren't always UTF-8."""
         n = self.i32()
         if n < 0 or n > MAX_STRING:
             raise Kn5Error("bad string length %d (the file may be encrypted or damaged)" % n)
-        return self.read(n).decode("utf-8", errors="replace")
+        raw = self.read(n)
+        return raw.decode("utf-8", errors="replace"), raw
 
     def count(self, item_size=1):
         """A non-negative item count that fits in the bytes left in the file."""
@@ -69,77 +74,98 @@ def read_kn5(path):
     if r.read(6) != b"sc6969":
         raise Kn5Error("not a kn5 file, or it is encrypted")
     version = r.i32()
-    if version > 5:
-        r.i32()  # extra header value in newer files
+    extra = r.i32() if version > 5 else None  # extra header value in newer files
 
-    textures = {}
+    # Everything is kept, so kn5write.write_kn5() can put the file back together byte for byte.
+    textures, texture_list = {}, []
     for _ in range(r.count(12)):
-        r.i32()  # active flag
-        name = r.string()
+        active = r.i32()
+        name, raw = r.string_raw()
         size = r.i32()
-        textures[name] = r.read(size)
+        data = r.read(size)
+        textures[name] = data
+        texture_list.append({"active": active, "name": name, "name_raw": raw, "data": data})
 
     materials = []
     for _ in range(r.count(10)):
-        mat = {"name": r.string(), "shader": r.string()}
+        name, name_raw = r.string_raw()
+        shader, shader_raw = r.string_raw()
+        mat = {"name": name, "shader": shader, "raw": {"name": name_raw, "shader": shader_raw}}
         mat["blend"] = r.u8()
-        mat["alpha_tested"] = bool(r.u8())
-        if version > 4:
-            r.i32()  # depth mode
-        props = {}
+        mat["alpha_tested_raw"] = r.u8()
+        mat["alpha_tested"] = bool(mat["alpha_tested_raw"])
+        mat["depth_mode"] = r.i32() if version > 4 else None
+        props, prop_list = {}, []
         for _ in range(r.count(40)):
-            pname = r.string()
+            pname, praw = r.string_raw()
             a = r.f32()
-            r.floats(2)
+            b = r.read(8)
             c = r.floats(3)
-            r.floats(4)
+            d = r.read(16)
             props[pname] = (a, c)
+            prop_list.append({"name": pname, "name_raw": praw, "a": a, "b": b, "c": c, "d": d})
         mat["props"] = props
-        maps = {}
+        mat["prop_list"] = prop_list
+        maps, map_list = {}, []
         for _ in range(r.count(12)):
-            sampler = r.string()
-            r.i32()  # slot
-            maps[sampler] = r.string()
+            sampler, sraw = r.string_raw()
+            slot = r.i32()
+            tex, traw = r.string_raw()
+            maps[sampler] = tex
+            map_list.append({"sampler": sampler, "sampler_raw": sraw, "slot": slot, "texture": tex, "texture_raw": traw})
         mat["maps"] = maps
+        mat["map_list"] = map_list
         materials.append(mat)
 
     root = read_node(r)
+    trailer = r.data[r.pos:]
     # Protected files carry an encrypted block after the model and only
     # placeholder textures; their real data can't be read.
-    protected = b"acd.checksum" in r.data[r.pos:r.pos + 256] or bool(
+    protected = b"acd.checksum" in trailer[:256] or bool(
         textures and all(len(t) < PLACEHOLDER_TEXTURE_SIZE for t in textures.values()))
-    return {"version": version, "textures": textures, "materials": materials, "root": root,
-            "protected": protected}
+    return {"version": version, "extra": extra, "textures": textures, "texture_list": texture_list,
+            "materials": materials, "root": root, "trailer": trailer, "protected": protected}
 
 
 def read_node(r, depth=0):
     if depth > MAX_NODE_DEPTH:
         raise Kn5Error("model nesting is too deep (the file may be damaged)")
     cls = r.i32()
-    node = {"cls": cls, "name": r.string(), "children": []}
+    name, name_raw = r.string_raw()
+    node = {"cls": cls, "name": name, "name_raw": name_raw, "children": []}
     child_count = r.count(13)
-    node["active"] = bool(r.u8())
+    node["active_raw"] = r.u8()
+    node["active"] = bool(node["active_raw"])
 
     if cls == 1:  # dummy / transform
         node["matrix"] = r.floats(16)
     elif cls == 2:  # static mesh
-        node["shadows"], node["visible"], node["transparent"] = (bool(b) for b in r.read(3))
+        node["flags_raw"] = r.read(3)
+        node["shadows"], node["visible"], node["transparent"] = (bool(b) for b in node["flags_raw"])
         verts = r.array("<f4", r.count(44) * 11).reshape(-1, 11)
         node["indices"] = r.array("<u2", r.count(2))
         node["material"] = r.i32()
-        r.i32()  # layer
-        r.floats(2)  # lod in / out
-        r.floats(4)  # bounding sphere
-        r.u8()  # is renderable
+        node["layer"] = r.i32()
+        node["lod_raw"] = r.read(8)  # lod in / out
+        node["bsphere_raw"] = r.read(16)  # bounding sphere centre + radius
+        node["renderable"] = r.u8()
         node["verts"] = verts
     elif cls == 3:  # skinned mesh: bones (name, inverse bind matrix) + per-vertex weights
-        node["shadows"], node["visible"], node["transparent"] = (bool(b) for b in r.read(3))
-        node["bones"] = [(r.string(), r.floats(16)) for _ in range(r.count(68))]
+        node["flags_raw"] = r.read(3)
+        node["shadows"], node["visible"], node["transparent"] = (bool(b) for b in node["flags_raw"])
+        node["bones"] = []
+        node["bones_raw"] = []
+        for _ in range(r.count(68)):
+            bname, braw = r.string_raw()
+            m = r.floats(16)
+            node["bones"].append((bname, m))
+            node["bones_raw"].append(braw)
         verts = r.array("<f4", r.count(76) * 19).reshape(-1, 19)
         node["indices"] = r.array("<u2", r.count(2))
         node["material"] = r.i32()
-        r.i32()  # layer
-        r.read(8)
+        node["layer"] = r.i32()
+        node["tail_raw"] = r.read(8)
+        node["verts_full"] = verts
         node["verts"] = verts[:, :11]
         node["weights"] = verts[:, 11:15]  # pos 3, normal 3, uv 2, tangent 3, weights 4, bone indices 4
         node["joints"] = verts[:, 15:19]

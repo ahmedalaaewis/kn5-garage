@@ -36,6 +36,7 @@
       </button>
       <button class="btn ghost" id="outChange" data-i18n>Change</button>
       <button class="btn ghost" id="outOpen" data-i18n>Open</button>
+      <button class="btn ghost" id="importBtn" data-i18n>Import</button>
       <button class="btn ghost" id="historyBtn" data-i18n>History</button>
       <button class="btn" id="exportsBtn"><span data-i18n>Exports</span> <span class="count" id="exportsCount">0</span></button>
       <select class="select small" id="langSel" data-i18n-title="Language" title="Language" aria-label="Language"></select>
@@ -176,7 +177,8 @@
       <button class="btn small" id="viewerBlender" hidden data-i18n>Open in Blender</button>
     </div>
     <div class="skin-strip" id="viewerSkins"></div>
-    <div class="viewer-stage" id="stage"><div class="hover-tip" id="hoverTip" hidden></div></div>
+    <div class="viewer-stage" id="stage"><div class="hover-tip" id="hoverTip" hidden></div>
+      <aside class="side-panel" id="liveryPanel" hidden></aside><aside class="side-panel" id="partsPanel" hidden></aside></div>
     <div class="viewer-info" id="viewerInfo"></div>
   </div>
 
@@ -239,6 +241,34 @@
         <input id="skinSearch" class="search" data-i18n-placeholder="Search skins, drivers, teams, numbers…" placeholder="Search skins, drivers, teams, numbers…">
         <div class="skin-gallery" id="skinGallery"></div>
       </div>
+    </div>
+  </div>
+
+  <div class="modal" id="saveDlg" hidden>
+    <div class="modal-card">
+      <div class="modal-head"><h3 id="saveTitle">Save</h3><button class="icon-btn" data-close aria-label="Close">×</button></div>
+      <div class="modal-body">
+        <label class="choice"><input type="radio" name="saveMode" id="saveModeNew" value="new">
+          <span><b data-i18n>Save as a new car</b><span class="muted" data-i18n>A copy next to the original; the original is not touched. It shows up in the game as its own car.</span></span></label>
+        <div class="save-new" id="saveNewFields">
+          <label class="edit-field"><span data-i18n>Name in the game</span><input class="search small-input" id="saveNewName" maxlength="80"></label>
+          <label class="edit-field"><span data-i18n>Folder name</span><input class="search small-input" id="saveNewId" maxlength="64" pattern="[A-Za-z0-9_\-]+"></label>
+        </div>
+        <div class="notice warn-list small" id="saveBlocked" hidden></div>
+        <label class="choice"><input type="radio" name="saveMode" id="saveModeOriginal" value="original">
+          <span><b data-i18n>Change the original</b><span class="muted" data-i18n>Every file is backed up first, so you can undo it from the Edit tab.</span></span></label>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" data-close data-i18n>Cancel</button>
+        <button class="btn primary" id="saveGo" data-i18n>Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="importDlg" hidden>
+    <div class="modal-card">
+      <div class="modal-head"><h3 data-i18n>Import</h3><button class="icon-btn" data-close aria-label="Close">×</button></div>
+      <div class="modal-body import-body" id="importBody"></div>
     </div>
   </div>
 

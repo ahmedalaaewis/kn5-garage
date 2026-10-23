@@ -502,6 +502,64 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 5px; }
 .hover-tip span { color: var(--muted); }
 #langSel { max-width: 110px; }
 
+/* ---- editing ---- */
+.edit-panel { gap: 18px; }
+.edit-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.edit-section { display: flex; flex-direction: column; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.edit-section h4 { margin: 0; font: 700 15px var(--display); letter-spacing: .08em; text-transform: uppercase; }
+.edit-section h5 { margin: 6px 0 0; font: 600 12px var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.edit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.edit-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.edit-field input { width: 100%; }
+.edit-field.wide { grid-column: 1 / -1; }
+.power-row { display: flex; gap: 10px; align-items: center; }
+.power-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+.edit-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.edit-row.end { justify-content: flex-end; }
+.choice { display: flex; gap: 10px; align-items: flex-start; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+.choice input { margin-top: 4px; accent-color: var(--accent); }
+.choice span span { display: block; font-size: 12.5px; margin-top: 2px; }
+.choice:has(input:checked) { border-color: var(--accent); }
+.choice:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+.save-new { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-left: 30px; }
+
+/* ---- side panels in the viewer (livery studio, parts editor) ---- */
+.side-panel {
+  position: absolute; top: 12px; right: 12px; bottom: 60px; width: 340px; z-index: 4; overflow: auto;
+  display: flex; flex-direction: column; gap: 10px; padding: 14px;
+  background: rgba(20, 24, 29, .94); border: 1px solid var(--border-2); border-radius: 14px; box-shadow: 0 20px 50px -20px #000;
+  backdrop-filter: blur(6px);
+}
+.livery-program { display: flex; gap: 8px; align-items: center; }
+.livery-program select { flex: 1; }
+.livery-tex { display: flex; gap: 10px; align-items: flex-start; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px; }
+.livery-tex img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; background: repeating-conic-gradient(#2a3038 0 25%, #1b2027 0 50%) 50% / 12px 12px; flex: none; }
+.livery-tex .grow { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.livery-tex b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.livery-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.import-body { gap: 12px; }
+.import-card .edit-row.end { margin-top: 2px; }
+.import-item { gap: 8px; font-size: 13px; color: var(--text); }
+.import-item .muted { font-size: 12px; }
+#partsPanel { width: 380px; }
+#partsPanel > .parts-items { max-height: 34vh; flex: none; }
+.side-panel .search { flex: none; }
+.parts-items.short { max-height: 160px; }
+.part-row { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 6px; cursor: pointer; font-size: 12.5px; min-height: 24px; }
+.part-row:hover { background: var(--surface-2); }
+.part-row.on { background: rgba(77, 210, 255, .14); box-shadow: inset 0 0 0 1px #4dd2ff; }
+.part-row.removed .part-name { text-decoration: line-through; color: var(--dim); }
+.part-row input { accent-color: var(--accent); margin: 0; }
+.part-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.part-mat { max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; }
+.parts-sel-head { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.parts-sel-head b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.edit-grid.three { grid-template-columns: repeat(3, 1fr); }
+.parts-colour input[type="color"] { width: 40px; height: 30px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: none; }
+.btn.danger { color: #ffb3bb; border-color: rgba(255, 90, 110, .45); }
+.btn.danger:hover { background: rgba(255, 90, 110, .12); }
+[dir="rtl"] .side-panel { right: auto; left: 12px; }
+
 /* ---- right-to-left languages (Arabic): flex and grid mirror by themselves; these are the
    pieces placed with left / right ---- */
 [dir="rtl"] .card .check-box { left: auto; right: 10px; }

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.0
+
+- **Edit cars** (new Edit tab): engine power, rev limiter, mass, fuel, final drive and turbo
+  boost from an unpacked `data` folder, and the specs and power/torque charts in the game menus.
+  Every save asks: a new car next to the original, or the original with a backup and **Undo**.
+- **Livery studio:** paint textures open in Photoshop, Illustrator, GIMP, Krita, Paint.NET,
+  Affinity, Inkscape (found automatically) or any program you add; the 3D view updates each time
+  you save there. UV guide, use a picture, and install as a new skin with preview and icon.
+- **Parts editor:** hide, remove, move / rotate / scale, recolour or change the material of any
+  part, and swap in parts from other cars or 3D files; undo and redo; lossless `.kn5` writing.
+- **Import:** install mods and skin packs from `.zip` (and `.7z` / `.rar` with 7-Zip) with
+  skip / rename / replace-with-backup; open `.glb`, `.gltf`, `.obj`, `.fbx` and `.kn5` files to
+  view or convert; make a new car from a 3D model on a donor car (beta).
+- **Library:** cars are found at any depth below an added folder (folders inside folders).
+- All new screens translated into the 12 other languages.
+
 ## 1.1.0
 
 - **Download and run:** `KN5Garage.exe`, one file, no Python needed (built by `build_exe.bat`

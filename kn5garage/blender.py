@@ -249,6 +249,30 @@ def glb_to_fbx(blender_exe, glb, fbx, timeout=900):
         raise Kn5Error("Blender couldn't write the FBX%s" % (": " + lines[-1][:200] if lines else ""))
 
 
+GLB_EXPR = """
+import sys, bpy
+fbx, glb = sys.argv[sys.argv.index("--") + 1:][:2]
+bpy.ops.wm.read_factory_settings(use_empty=True)
+bpy.ops.import_scene.fbx(filepath=fbx)
+bpy.ops.export_scene.gltf(filepath=glb, export_format="GLB")
+"""
+
+
+def fbx_to_glb(blender_exe, fbx, glb, timeout=900):
+    """Read an .fbx with Blender in the background and write it as .glb."""
+    from .kn5 import Kn5Error
+    if not looks_like_blender(blender_exe):
+        raise Kn5Error("FBX files are read through Blender: locate blender.exe first")
+    try:
+        p = subprocess.run([str(blender_exe), "--background", "--factory-startup", "--python-expr", GLB_EXPR,
+                            "--", str(fbx), str(glb)], capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise Kn5Error("Blender took too long to read the FBX")
+    if p.returncode != 0 or not Path(glb).is_file():
+        lines = [line for line in (p.stderr or p.stdout or "").splitlines() if line.strip()]
+        raise Kn5Error("Blender couldn't read the FBX%s" % (": " + lines[-1][:200] if lines else ""))
+
+
 def launch(blender_exe, script):
     """Open Blender with the setup script (doesn't wait for it)."""
     return subprocess.Popen([str(blender_exe), "--python", str(script)],

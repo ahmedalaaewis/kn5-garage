@@ -4,7 +4,7 @@ import { api, fileUrl } from './api.js';
 import { $, $$, debounce, downloadText, fmtBytes, h, img } from './dom.js';
 import { t } from './i18n.js';
 import { COLUMNS, STATUS_LABEL, csvCell, displayPath, filterCars, isBad, sortCars as sortBy } from './model.js';
-import { carById, emit, prefs, state } from './state.js';
+import { carById, emit, on, prefs, state } from './state.js';
 import { flash } from './toast.js';
 
 export const statusLabel = (s) => t(STATUS_LABEL[s] || s);
@@ -351,6 +351,11 @@ export function initLibrary() {
   });
   $('#selectAll').onclick = toggleAll;
   $('#csvBtn').onclick = exportCsv;
+  // after an edit is saved: read the folders again and show the edited (or new) car
+  on('rescan', async (id) => {
+    await scan();
+    if (id && carById(id)) { selectCar(id); state.tab = 'edit'; emit('detail'); }
+  });
 }
 
 export async function startLibrary() {

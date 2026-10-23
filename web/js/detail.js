@@ -4,6 +4,7 @@ import { api, fileUrl, q } from './api.js';
 import { openInBlender } from './blender.js';
 import { lineChart, peak } from './charts.js';
 import { $, ICON, fmtBytes, h, img } from './dom.js';
+import { editTab } from './editor.js';
 import { openExportDialog } from './exporter.js';
 import { t } from './i18n.js';
 import { flagPills, selectCar, showPath, statusLabel, toggleFavourite } from './library.js';
@@ -74,16 +75,17 @@ export async function renderDetail() {
   }
 
   const tabs = h('div', { class: 'tabs', role: 'tablist' },
-    ...[['overview', t('Overview')], ['skins', `${t('Skins')} (${d.skins.length})`], ['files', t('Files')]].map(([k, label]) =>
+    ...[['overview', t('Overview')], ['skins', `${t('Skins')} (${d.skins.length})`], ['files', t('Files')], ['edit', t('Edit')]].map(([k, label]) =>
       h('button', { class: state.tab === k ? 'on' : '', role: 'tab', 'aria-selected': String(state.tab === k),
         onclick: () => { state.tab = k; renderDetail(); } }, label)),
   );
-  const panel = state.tab === 'skins' ? skinsTab(d) : state.tab === 'files' ? filesTab(d) : overviewTab(d);
+  const panel = state.tab === 'skins' ? skinsTab(d) : state.tab === 'files' ? filesTab(d)
+    : state.tab === 'edit' ? editTab(d) : overviewTab(d);
 
   pane.replaceChildren(hero,
     h('div', { class: 'detail-body' }, chips, h('div', { class: 'card-flags inline' }, flagPills(c)), author,
       variantNote(d), notice, problemsNotice(id), tagEditor(c),
-      h('div', { class: 'readonly' }, ICON.shield(), t('Read-only: this car folder is never modified')),
+      h('div', { class: 'readonly' }, ICON.shield(), t('Exports never touch this car. Edits ask where to save and keep a backup.')),
       tabs, panel),
     actionBar(d, skin),
   );

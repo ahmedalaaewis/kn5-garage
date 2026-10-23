@@ -78,6 +78,24 @@ def image_for_gltf(data, flip_green=False, max_size=None, jpeg_quality=None):
     return png_bytes(img), "image/png"
 
 
+def dds_bytes(img, mipmaps=True):
+    """An uncompressed 32-bit BGRA .dds with a full mipmap chain: what AC reads for skins.
+    (Uncompressed keeps every detail of a livery; the game compresses nothing itself.)"""
+    img = img.convert("RGBA")
+    levels = [img]
+    while mipmaps and max(levels[-1].size) > 1:
+        w, h = levels[-1].size
+        levels.append(levels[-1].resize((max(1, w // 2), max(1, h // 2)), Image.LANCZOS))
+    w, h = img.size
+    flags = 0x1 | 0x2 | 0x4 | 0x8 | 0x1000 | (0x20000 if len(levels) > 1 else 0)
+    caps = 0x1000 | (0x8 | 0x400000 if len(levels) > 1 else 0)
+    header = struct.pack("<4sIIIIIII44x", b"DDS ", 124, flags, h, w, w * 4, 0, len(levels))
+    header += struct.pack("<II4sIIIII", 32, 0x41, b"\0\0\0\0", 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000)
+    header += struct.pack("<IIII4x", caps, 0, 0, 0)
+    body = b"".join(np.asarray(level, np.uint8)[..., [2, 1, 0, 3]].tobytes() for level in levels)
+    return header + body
+
+
 def image_size(data):
     """(width, height) of an encoded PNG / JPEG without decoding the pixels."""
     with Image.open(io.BytesIO(data)) as probe:

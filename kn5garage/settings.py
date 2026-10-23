@@ -24,6 +24,9 @@ class Settings:
             for key in ("out", "blender", "language"):
                 if isinstance(loaded.get(key), str) and loaded[key].strip():
                     self.data[key] = loaded[key]
+            progs = loaded.get("editors")
+            if isinstance(progs, list):
+                self.data["editors"] = [e for e in progs if isinstance(e, dict) and isinstance(e.get("path"), str)][:30]
             presets = loaded.get("savedPresets")
             if isinstance(presets, list):
                 self.data["savedPresets"] = [p for p in presets if isinstance(p, dict) and isinstance(p.get("name"), str)

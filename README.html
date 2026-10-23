@@ -98,8 +98,8 @@
         </svg>
         <h1>KN5 <span>GARAGE</span></h1>
       </div>
-      <p class="tagline">Turn Assetto Corsa car mods into files for Blender, game engines, 3D viewers and 3D printers,
-        from a browser-based app that runs entirely on your PC.</p>
+      <p class="tagline">A garage for Assetto Corsa car mods that runs entirely on your PC: browse your collection,
+        edit cars, paint liveries, install mods, and export to Blender, game engines, 3D viewers and 3D printers.</p>
       <div class="cta">
         <a class="btn primary" href="#run">Download and run</a>
         <a class="btn" href="#pictures">Pictures</a>
@@ -119,10 +119,14 @@
         <div class="feature"><b>Your whole collection</b><p>Previews, authors, specs, power curves, skins, CSP features, favourites and your own tags.</p></div>
         <div class="feature"><b>Export anywhere</b><p>glTF (.glb), OBJ, FBX (through Blender) and STL, with presets for renders, game engines and 3D printing.</p></div>
         <div class="feature"><b>3D before you export</b><p>Paint colours, steering, lights, day and night studios, animations, measuring, pictures and videos.</p></div>
+        <div class="feature"><b>Edit cars</b><p>Power, torque, weight, gearing and turbo, and the specs in the game menus. Save as a new car, or change the original with a backup you can undo.</p></div>
+        <div class="feature"><b>Your own livery</b><p>Paint in Photoshop, Illustrator, GIMP or any image program; the 3D car updates every time you save, then installs as a new skin.</p></div>
+        <div class="feature"><b>Parts editor</b><p>Hide, remove, move, rotate, scale and recolour parts, or swap in parts from other cars and 3D files.</p></div>
+        <div class="feature"><b>Import</b><p>Install mods and skin packs from .zip, .7z and .rar, open .glb / .gltf / .obj / .fbx files, and make a car from a 3D model (beta).</p></div>
         <div class="feature"><b>Blender ready</b><p>One click opens an export in a studio scene with sorted parts, lights and a camera.</p></div>
         <div class="feature"><b>Tidy up</b><p>Finds duplicates and identical copies, shows disk space, and lists missing files.</p></div>
         <div class="feature"><b>13 languages</b><p>English, Deutsch, Español, Français, Italiano, Polski, Português, Türkçe, Русский, العربية, 日本語, 한국어, 中文.</p></div>
-        <div class="feature"><b>Private and read-only</b><p>Runs on your PC only, loads nothing from the internet, and never changes your car folders.</p></div>
+        <div class="feature"><b>Private and safe</b><p>Runs on your PC only and loads nothing from the internet. Exports never change your cars; edits ask first and keep a backup.</p></div>
       </div>
     </section>
 
@@ -146,6 +150,10 @@
       <div class="gallery">
         <figure><img src="docs/screenshots/viewer-night.png" alt="3D viewer at night with the lights on and the front wheels turned" width="1600" height="900" loading="lazy"><figcaption><b>Night studio</b>, lights on, steering turned</figcaption></figure>
         <figure><img src="docs/screenshots/viewer-day.png" alt="3D viewer in daylight with the skin strip" width="1600" height="900" loading="lazy"><figcaption><b>Day studio</b> and the skin strip</figcaption></figure>
+        <figure><img src="docs/screenshots/parts-editor.png" alt="The parts editor: a part selected on the car, with move, colour and swap tools" width="1600" height="900" loading="lazy"><figcaption><b>Parts editor</b>: hide, move, recolour, swap</figcaption></figure>
+        <figure><img src="docs/screenshots/livery.png" alt="The livery studio: paint textures to edit in an image program, with a live 3D preview" width="1600" height="900" loading="lazy"><figcaption><b>Livery studio</b> with live preview</figcaption></figure>
+        <figure><img src="docs/screenshots/edit.png" alt="The Edit tab: physics, menu specs and power curve" width="1600" height="1700" loading="lazy"><figcaption><b>Edit</b> power, weight, gearing and specs</figcaption></figure>
+        <figure><img src="docs/screenshots/import.png" alt="Import: mods, skin packs, 3D files, and a car from a 3D model" width="1600" height="1000" loading="lazy"><figcaption><b>Import</b> mods, skins and 3D files</figcaption></figure>
         <figure><img src="docs/screenshots/viewer-wire.png" alt="Texture and wireframe view" width="1600" height="900" loading="lazy"><figcaption><b>Texture + wireframe</b> view</figcaption></figure>
         <figure><img src="docs/screenshots/export.png" alt="The export dialog with presets and options" width="1600" height="1000" loading="lazy"><figcaption><b>Export</b>: presets, paint, lights, textures, saved presets</figcaption></figure>
         <figure><img src="docs/screenshots/compare.png" alt="Comparing four cars: specs with the best values highlighted and their power curves" width="1600" height="1000" loading="lazy"><figcaption><b>Compare</b> up to six cars</figcaption></figure>
@@ -186,6 +194,21 @@
       <p>Options: paint colour (tint or solid, with the paint parts chosen automatically or by clicking the car),
         headlights on, texture size, JPEG textures, a Blender setup script, and saved presets.
         Each export gets a report, and <b>History</b> keeps past exports with an <b>Again</b> button.</p>
+      <h3>Editing</h3>
+      <p>The <b>Edit</b> tab of a car. Every save asks: <b>Save as a new car</b> (a copy next to the original) or
+        <b>Change the original</b> (every file is backed up first; <b>Undo saved changes</b> puts it back).</p>
+      <ul class="pill-list">
+        <li>Engine power</li><li>Rev limiter</li><li>Mass and fuel</li><li>Final drive</li><li>Turbo boost</li>
+        <li>Menu specs and charts</li><li>Livery in any image program</li><li>Live 3D preview</li><li>UV guide</li>
+        <li>Install as a skin</li><li>Hide / remove parts</li><li>Move, rotate, scale</li><li>Recolour</li>
+        <li>Swap parts</li><li>Undo / redo</li>
+      </ul>
+      <h3>Import</h3>
+      <p>Install downloaded mods and skin packs (<code>.zip</code>; <code>.7z</code> and <code>.rar</code> with 7-Zip):
+        choose what to install and whether to skip, install next to, or replace what is already there.
+        Programs inside archives are never unpacked. Open <code>.glb</code>, <code>.gltf</code>, <code>.obj</code>,
+        <code>.fbx</code> and <code>.kn5</code> files to view or convert, or make a new car from a 3D model on a donor
+        car's physics, sound and wheels (beta).</p>
       <h3>3D viewer</h3>
       <ul class="pill-list">
         <li>Textured · wire · clay</li><li>Studio · day · night</li><li>Shadows</li><li>Paint and paint parts</li>
@@ -209,7 +232,8 @@
         <li>Websites can't control it: a random per-start token, and cross-site requests, DNS rebinding and framing are blocked.</li>
         <li>The page loads nothing from the internet: no web fonts, analytics or update checks. Nothing is logged.</li>
         <li>Paths on screen start with <code>~</code> instead of your Windows user name.</li>
-        <li>Car folders are only read; mod files are treated as untrusted and fuzz-tested.</li>
+        <li>Exports only read car folders; edits write only when you save, after asking, with a backup.</li>
+        <li>Mod files, archives and 3D files are treated as untrusted: unsafe paths, links, zip bombs and programs inside archives are refused.</li>
       </ul>
       <p>Details: <a href="SECURITY.md">SECURITY.md</a>. Some authors protect their cars; KN5 Garage exports only their shape and never tries to break the protection. Please respect mod authors.</p>
     </section>
@@ -218,7 +242,7 @@
       <h2>Building and contributing</h2>
       <ul>
         <li><code>run_tests.bat</code> runs the unit, security, web and end-to-end tests.</li>
-        <li><code>build_exe.bat</code> builds <code>dist\KN5Garage.exe</code>; pushing a tag like <code>v1.1.0</code> builds, tests and publishes it on GitHub.</li>
+        <li><code>build_exe.bat</code> builds <code>dist\KN5Garage.exe</code>; pushing a tag like <code>v1.2.0</code> builds, tests and publishes it on GitHub.</li>
         <li><code>tools/make_demo_garage.py</code> builds the demo cars; <code>tools/screenshots.py</code> remakes these pictures.</li>
       </ul>
       <p>How the code is organised and the project rules: <a href="CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>

@@ -23,6 +23,34 @@ def pick_folder(title="Choose a car folder, or your assettocorsa\\content\\cars 
         root.destroy()
 
 
+def pick_file(title, filetypes):
+    root, filedialog = _tk()
+    if root is None:
+        return None
+    try:
+        return filedialog.askopenfilename(title=title, filetypes=filetypes) or None
+    finally:
+        root.destroy()
+
+
+def pick_image():
+    return pick_file("Choose a picture for the livery",
+                     [("Pictures", "*.png *.jpg *.jpeg *.bmp *.tga *.tif *.tiff *.webp *.dds"), ("All files", "*")])
+
+
+def pick_program():
+    return pick_file("Choose a program (for example Photoshop.exe)", [("Programs", "*.exe"), ("All files", "*")])
+
+
+def pick_model():
+    return pick_file("Choose a 3D model", [("3D models", "*.glb *.gltf *.obj *.fbx *.kn5"), ("All files", "*")])
+
+
+def pick_archive():
+    return pick_file("Choose a downloaded mod or skin pack",
+                     [("Archives", "*.zip *.7z *.rar"), ("All files", "*")])
+
+
 def pick_blender_exe():
     root, filedialog = _tk()
     if root is None:

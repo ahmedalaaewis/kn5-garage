@@ -6,6 +6,10 @@ import { api } from './js/api.js';
 import { initBlender } from './js/blender.js';
 import { initCompare, openCompare } from './js/compare.js';
 import { initDetail } from './js/detail.js';
+import { initEditor } from './js/editor.js';
+import { initImport, openImport } from './js/importer.js';
+import { initLivery, openLivery } from './js/livery.js';
+import { initParts, openParts } from './js/parts.js';
 import { $, $$, h } from './js/dom.js';
 import { initExporter, openExportDialog, refreshExports } from './js/exporter.js';
 import { initExtras, openHistory, openSkins, openSpace } from './js/extras.js';
@@ -66,7 +70,8 @@ function initLanguage() {
 
 // ---------------------------------------------------------------- deep links
 // #car=<id>&tab=skins&layout=table&filter=fav&search=…&select=a,b&open=compare|space|skins|history|exports|export
-//  &preset=game&viewer=preview|<file.glb>&studio=day&mode=texwire&paint=%23c8102e&paintMode=solid&steer=20&lights=1
+//  |import|parts|livery &preset=game&viewer=preview|<file.glb>&studio=day&mode=texwire&paint=%23c8102e&paintMode=solid
+//  &steer=20&lights=1&spin=0
 // Handy for bookmarks, and used by tools/screenshots.py.
 
 async function applyDeepLink() {
@@ -83,12 +88,16 @@ async function applyDeepLink() {
     if (p.get('tab')) { state.tab = p.get('tab'); emit('detail'); }
   }
   if (p.get('studio')) setStudio(p.get('studio'));
+  if (p.get('spin') === '0') $('#spinChk').checked = false;
   const open = p.get('open');
   if (open === 'compare') await openCompare();
   if (open === 'space') await openSpace();
   if (open === 'skins') await openSkins(p.get('skinSearch') || '');
   if (open === 'history') await openHistory();
   if (open === 'exports') { await refreshExports(); $('#exports').hidden = false; }
+  if (open === 'import') openImport();
+  if (open === 'parts' && state.selected) await openParts(state.selected);
+  if (open === 'livery' && state.selected) await openLivery(state.selected);
   if (open === 'export' && state.selected) {
     if (p.get('preset')) state.preset = p.get('preset');
     openExportDialog([state.selected]);
@@ -101,7 +110,6 @@ async function applyDeepLink() {
     if (p.get('paint')) setPaintColour(p.get('paint'), p.get('paintMode') || 'tint');
     if (p.get('steer')) setSteer(Number(p.get('steer')));
     if (p.get('lights') === '1') setLights(true);
-    if (p.get('spin') === '0') $('#spinChk').checked = false;
   }
   document.body.dataset.ready = '1';  // tells tools/screenshots.py the page is set up
 }
@@ -112,6 +120,10 @@ initToast();
 initGlobal();
 initLibrary();
 initDetail();
+initEditor();
+initLivery();
+initParts();
+initImport();
 initCompare();
 initExporter();
 initExtras();

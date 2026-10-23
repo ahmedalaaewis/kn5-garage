@@ -12,4 +12,4 @@ Modules:
     paths, dialogs, cli, __main__             running from source or as KN5Garage.exe
 """
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"

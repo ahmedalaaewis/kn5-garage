@@ -98,7 +98,10 @@ export class Viewer3D {
     this.wireOver = new THREE.LineBasicMaterial({ color: 0xff6a45, transparent: true, opacity: 0.35 });
     this.highlight = new THREE.BoxHelper(undefined, 0xffd24d);
     this.highlight.visible = false;
-    this.scene.add(this.highlight);
+    this.selection = new THREE.BoxHelper(undefined, 0x4dd2ff);
+    this.selection.visible = false;
+    this.selected = null;
+    this.scene.add(this.highlight, this.selection);
     this.raycaster = new THREE.Raycaster();
     this.measureGroup = new THREE.Group();
     this.scene.add(this.measureGroup);
@@ -139,6 +142,12 @@ export class Viewer3D {
     const { THREE } = this.T;
     const model = gltf.scene;
     let tris = 0, meshes = 0;
+    // glTF node index of each object: the same as the part's index in the kn5 (see parts.py)
+    this.nodes = new Map();
+    model.traverse((o) => {
+      const a = gltf.parser.associations.get(o);
+      if (a && a.nodes !== undefined && !this.nodes.has(a.nodes)) { this.nodes.set(a.nodes, o); o.userData.node = a.nodes; }
+    });
     model.traverse((o) => {
       if (!o.isMesh) return;
       meshes++;
@@ -154,6 +163,7 @@ export class Viewer3D {
     this.stopAnimations();
     this.clearMeasure();
     this.highlight.visible = false;
+    this.select(null);
     if (this.model) { this.scene.remove(this.model); disposeModel(this.model); }
     this.scene.add(model);
     this.model = model;
@@ -273,6 +283,32 @@ export class Viewer3D {
       this.painted.add(m);
     }
     return mats.length;
+  }
+
+  // Swap a texture (by its file name in the model, e.g. "body.dds") for a new picture: the livery
+  // studio calls this whenever the edited file is saved. Resolves to the number of materials changed.
+  replaceTexture(name, url) {
+    if (!this.model) return Promise.resolve(0);
+    const { THREE } = this.T;
+    const key = String(name).toLowerCase();
+    return new THREE.TextureLoader().loadAsync(url).then((tex) => {
+      tex.flipY = false;  // glTF texture layout
+      tex.colorSpace = THREE.SRGBColorSpace;
+      let n = 0;
+      this.eachMaterial((m) => {
+        const current = 'origMap' in m.userData ? m.userData.origMap : m.map;
+        const match = current && (current.userData?.kn5Name || current.name || '').toLowerCase() === key;
+        if (!match) return;
+        tex.wrapS = current.wrapS;
+        tex.wrapT = current.wrapT;
+        tex.userData.kn5Name = current.userData?.kn5Name || current.name;
+        if ('origMap' in m.userData) m.userData.origMap = tex;
+        if (m.map === current) m.map = tex;
+        m.needsUpdate = true;
+        n++;
+      });
+      return n;
+    });
   }
 
   // ---- lights (materials the converter marked as head / tail lights)
@@ -414,30 +450,64 @@ export class Viewer3D {
     } else this.onMeasure?.(null, 1);
   }
 
+  // ---- parts (by glTF node index)
+
+  nodeObject(i) { return this.nodes?.get(i) || null; }
+
+  select(i) {
+    this.selected = i == null ? null : this.nodeObject(i);
+    if (this.selected) this.selection.setFromObject(this.selected);
+    this.selection.visible = !!this.selected && this.selected.visible;
+  }
+
+  setNodeVisible(i, on) {
+    const o = this.nodeObject(i);
+    if (o) o.visible = on;
+    this.select(this.selected?.userData.node ?? null);
+  }
+
+  // matrix: 16 numbers in glTF order, the part's local transform
+  setNodeMatrix(i, matrix) {
+    const o = this.nodeObject(i);
+    if (!o) return;
+    o.matrix.fromArray(matrix);
+    o.matrix.decompose(o.position, o.quaternion, o.scale);
+    o.updateMatrixWorld(true);
+    if (this.selected === o) this.selection.setFromObject(o);
+  }
+
   // ---- pictures and video
 
   // One picture from the current view, at a fixed size; resolves to a PNG data URL
-  snapshot({ width = 1920, height = 1080 } = {}) {
+  // background: a colour for pictures that can't be transparent (JPEG skin previews)
+  snapshot({ width = 1920, height = 1080, background = null } = {}) {
     if (!this.model) return null;
-    return this.withSize(width, height, () => {
-      this.renderer.render(this.scene, this.camera);
-      return this.renderer.domElement.toDataURL('image/png');
-    });
+    const keep = this.scene.background;
+    if (background != null && !keep) this.scene.background = new this.T.THREE.Color(background);
+    try {
+      return this.withSize(width, height, () => {
+        this.renderer.render(this.scene, this.camera);
+        return this.renderer.domElement.toDataURL('image/png');
+      });
+    } finally { this.scene.background = keep; }
   }
 
   withSize(width, height, fn) {
     const { THREE } = this.T;
     const r = this.renderer, cam = this.camera;
-    const keep = { aspect: cam.aspect, size: r.getSize(new THREE.Vector2()), ratio: r.getPixelRatio(), grid: this.grid.visible };
+    const keep = { aspect: cam.aspect, size: r.getSize(new THREE.Vector2()), ratio: r.getPixelRatio(), grid: this.grid.visible,
+      sel: this.selection.visible };
     r.setPixelRatio(1);
     r.setSize(width, height, false);
     cam.aspect = width / height;
     cam.updateProjectionMatrix();
     this.grid.visible = false;
     this.highlight.visible = false;
+    this.selection.visible = false;
     try { return fn(); }
     finally {
       this.grid.visible = keep.grid;
+      this.selection.visible = keep.sel;
       r.setPixelRatio(keep.ratio);
       r.setSize(keep.size.x, keep.size.y);
       cam.aspect = keep.aspect;
@@ -540,7 +610,8 @@ export class Viewer3D {
 
 function describe(mesh) {
   const m = [].concat(mesh.userData.orig || mesh.material)[0];
-  return { name: mesh.name || '(unnamed)', material: m?.name || '', paint: !!m?.userData?.kn5_paint, kind: m?.userData?.kn5_kind || null };
+  return { name: mesh.name || '(unnamed)', material: m?.name || '', paint: !!m?.userData?.kn5_paint, kind: m?.userData?.kn5_kind || null,
+    node: mesh.userData.node ?? null };
 }
 
 function restore(m) {

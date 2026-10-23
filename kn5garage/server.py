@@ -31,10 +31,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import __version__, blender, carfiles, carinfo, convert, dialogs, paths
+from . import (__version__, blender, builder, carfiles, carinfo, convert, dialogs, editors, edits, importer, installer,
+               kn5write, livery, parts, paths, physics)
 from .cache import PreviewCache, ScanCache
 from .jobs import Jobs
-from .kn5 import Kn5Error
+from .kn5 import Kn5Error, read_kn5
 from .settings import Settings
 from .userdata import History, Library
 
@@ -143,7 +144,8 @@ def str_list(value, what, max_items, max_len=1024):
 
 class App:
     def __init__(self, settings_path=None, default_out=None, pick_folder=None, open_path=None,
-                 pick_file=None, launch_blender=None):
+                 pick_file=None, launch_blender=None, pick_image=None, pick_program=None, launch_program=None,
+                 pick_model=None, pick_archive=None):
         self.token = secrets.token_urlsafe(32)
         settings_path = Path(settings_path or PROJECT_DIR / "settings.json")
         self.settings = Settings(settings_path, default_out or PROJECT_DIR / "output")
@@ -156,8 +158,16 @@ class App:
         self.pick_file = pick_file or dialogs.pick_blender_exe
         self.open_path = open_path or open_in_explorer
         self.launch_blender = launch_blender or blender.launch
+        self.pick_image = pick_image or dialogs.pick_image
+        self.pick_program = pick_program or dialogs.pick_program
+        self.launch_program = launch_program or editors.launch
+        self.pick_model = pick_model or dialogs.pick_model
+        self.pick_archive = pick_archive or dialogs.pick_archive
+        self.parts = parts.Sessions()
+        self.imports = {}  # import id -> unpacked folder
         self.pick_lock = threading.Lock()
         self.preview_lock = threading.Lock()
+        self.edit_lock = threading.Lock()  # one edit at a time
         self._scan_cache = None
 
     # --- folders ---------------------------------------------------------
@@ -394,6 +404,349 @@ class App:
         with ThreadPoolExecutor(8) as pool:
             return {"skins": [s for group in pool.map(skins, self.scanned().items()) for s in group]}
 
+    # --- editing cars ----------------------------------------------------
+
+    def backups_dir(self):
+        return self.out_dir() / "backups"
+
+    def edit_target(self, car_id, body, what):
+        """Where a save goes: {"mode": "new", "newId", "name"} or {"mode": "original"}."""
+        car_dir = self.car_dir(car_id)
+        if carinfo.car_summary(car_dir)["status"] == "protected":
+            raise ApiError(400, "protected cars can't be edited")
+        t = body.get("target") or {}
+        if not isinstance(t, dict):
+            raise ApiError(400, "target must be an object")
+        name = t.get("name")
+        if name is not None and (not isinstance(name, str) or len(name) > 80):
+            raise ApiError(400, "name must be text (up to 80 characters)")
+        try:
+            return edits.Target(car_dir, t.get("mode"), self.backups_dir(), new_id=t.get("newId"), display_name=name)
+        except edits.EditError as e:
+            raise ApiError(400, str(e))
+
+    def api_edit_info(self, query):
+        car_dir = self.car_dir(query.get("id", ""))
+        phys = physics.read_physics(car_dir)
+        return {"protected": carinfo.car_summary(car_dir)["status"] == "protected",
+                "copyBlockers": edits.copy_blockers(car_dir), "physics": phys,
+                "suggested": physics.suggested_specs(phys) if phys["available"] else {},
+                "uiSpecs": physics.read_ui_specs(car_dir),
+                "backups": edits.list_backups(self.backups_dir(), car_dir)}
+
+    def api_edit_specs(self, body):
+        with self.edit_lock:
+            target = self.edit_target(str(body.get("id", "")), body, "specs")
+            try:
+                notes = physics.apply_specs(target, physics=body.get("physics"), ui=body.get("ui"))
+            except edits.EditError as e:
+                if target.mode == "new":
+                    shutil.rmtree(target.dir, ignore_errors=True)
+                raise ApiError(400, str(e))
+            return dict(target.finish("Specs"), notes=notes)
+
+    def api_backups(self, query):
+        car = query.get("id")
+        return {"items": edits.list_backups(self.backups_dir(), self.car_dir(car) if car else None)}
+
+    def api_backup_restore(self, body):
+        with self.edit_lock:
+            try:
+                return edits.restore_backup(self.backups_dir(), body.get("backup"))
+            except edits.EditError as e:
+                raise ApiError(400, str(e))
+
+    # --- image programs and liveries --------------------------------------
+
+    def work_dir(self):
+        return self.out_dir() / "work"
+
+    def editor_list(self):
+        return editors.all_editors(self.settings.get("editors") or [])
+
+    def api_editors(self, query):
+        return {"editors": self.editor_list()}
+
+    def api_editors_add(self, body):
+        with self.pick_lock:
+            path = self.pick_program()
+        if path:
+            if not editors.valid_program(path):
+                raise ApiError(400, "that isn't a program")
+            saved = [e for e in (self.settings.get("editors") or []) if e.get("path", "").lower() != str(path).lower()]
+            name = body.get("name") if isinstance(body.get("name"), str) and body["name"].strip() else Path(path).stem
+            self.settings.update(editors=saved + [{"name": name.strip()[:40], "path": str(path)}])
+        return {"editors": self.editor_list()}
+
+    def api_editors_remove(self, body):
+        path = str(body.get("path", "")).lower()
+        self.settings.update(editors=[e for e in (self.settings.get("editors") or []) if e.get("path", "").lower() != path])
+        return {"editors": self.editor_list()}
+
+    def livery_call(self, fn, *args):
+        try:
+            return fn(*args)
+        except edits.EditError as e:
+            raise ApiError(400, str(e))
+
+    def api_livery_start(self, body):
+        car_id = str(body.get("id", ""))
+        names = body.get("paintMaterials")
+        if names is not None:
+            str_list(names, "paintMaterials", 200, 256)
+        info = self.livery_call(livery.start, self.car_dir(car_id), car_id, body.get("skin"), self.work_dir(), names)
+        return {"session": info["session"], "skin": info["skin"], "textures": info["textures"]}
+
+    def api_livery_status(self, query):
+        return {"files": self.livery_call(livery.status, self.work_dir(), query.get("id", ""), query.get("session", ""))}
+
+    def api_livery_open(self, body):
+        """Open a work file in an image program (one we found or the user added), or the default app."""
+        f = self.livery_call(livery.work_file, self.work_dir(), str(body.get("id", "")), str(body.get("session", "")),
+                             str(body.get("file", "")))
+        program = body.get("program")
+        if program in (None, "", "default"):
+            editors.open_default(f)
+            return {"opened": f.name}
+        allowed = {e["path"].lower(): e for e in self.editor_list()}
+        if not isinstance(program, str) or program.lower() not in allowed:
+            raise ApiError(400, "unknown program; add it first")
+        self.launch_program(allowed[program.lower()]["path"], f)
+        return {"opened": f.name, "program": allowed[program.lower()]["name"]}
+
+    def api_livery_image(self, body):
+        with self.pick_lock:
+            path = self.pick_image()
+        if not path:
+            return {"used": None}
+        self.livery_call(livery.use_image, self.work_dir(), str(body.get("id", "")), str(body.get("session", "")),
+                         str(body.get("file", "")), path)
+        return {"used": Path(path).name}
+
+    def api_livery_install(self, body):
+        car_id = str(body.get("id", ""))
+        preview = None
+        data = body.get("preview")
+        if isinstance(data, str) and data.startswith("data:image/png;base64,") and len(data) < 30_000_000:
+            try:
+                preview = base64.b64decode(data.split(",", 1)[1], validate=True)
+            except (binascii.Error, ValueError):
+                preview = None
+        info = body.get("info") if isinstance(body.get("info"), dict) else {}
+        with self.edit_lock:
+            target = self.edit_target(car_id, body, "livery")
+            try:
+                dest = livery.install(self.work_dir(), car_id, str(body.get("session", "")), target,
+                                      body.get("skinName"), info, preview)
+            except edits.EditError as e:
+                if target.mode == "new":
+                    shutil.rmtree(target.dir, ignore_errors=True)
+                raise ApiError(400, str(e))
+            return dict(target.finish("New livery %s" % dest.split("/")[-1]), skin=dest.split("/")[-1])
+
+    # --- parts editor ---------------------------------------------------
+
+    def parts_call(self, fn, *args):
+        try:
+            return fn(*args)
+        except (edits.EditError, Kn5Error) as e:
+            raise ApiError(400, str(e))
+
+    def parts_session(self, arg):
+        return self.parts_call(self.parts.get, str(arg.get("session", "")), str(arg.get("id", "")))
+
+    def parts_state(self, s, reload=True):
+        state = s.state()
+        if reload:
+            name = re_safe("parts__%s__%d" % (s.id, s.version)) + ".glb"
+            previews = self.preview_cache()
+            with self.preview_lock:
+                self.parts_call(s.preview, previews.path(name))
+                previews.prune(keep=name, prefix=re_safe("parts__%s__" % s.id))
+            state["url"] = "/preview/" + name
+        return state
+
+    def api_parts_start(self, body):
+        car_id = str(body.get("id", ""))
+        skin = body.get("skin")
+        if skin is not None and not isinstance(skin, str):
+            raise ApiError(400, "skin must be text")
+        with self.edit_lock:
+            s = self.parts_call(self.parts.start, self.car_dir(car_id), car_id, skin)
+        return self.parts_state(s)
+
+    def api_parts_step(self, body):
+        s = self.parts_session(body)
+        with self.edit_lock:
+            what = body.get("undo") and "undo" or body.get("redo") and "redo" or "step"
+            if what == "undo":
+                reload = self.parts_call(s.undo)
+            elif what == "redo":
+                reload = self.parts_call(s.redo_step)
+            else:
+                reload = self.parts_call(s.apply, body.get("step"))
+        return self.parts_state(s, reload)
+
+    def api_parts_source(self, body):
+        """Open another car, or a 3D file, to take parts from. Returns its parts."""
+        s = self.parts_session(body)
+        if body.get("car"):
+            other = str(body["car"])
+            car_dir = self.car_dir(other)
+            main = carfiles.find_main_kn5(car_dir)
+            if main is None:
+                raise ApiError(400, "that car has no model")
+            key = "car:" + other
+            if key not in s.sources:
+                model = self.parts_call(read_kn5, main)
+                with self.edit_lock:
+                    self.parts_call(s.add_source, key, other, model)
+        else:
+            with self.pick_lock:
+                path = self.pick_model()
+            if not path:
+                return {"source": None}
+            path = Path(path)
+            key = "file:%s" % path
+            if key not in s.sources:
+                if path.suffix.lower() == ".kn5":
+                    model = self.parts_call(read_kn5, path)
+                else:
+                    model = self.parts_call(importer.load_model, path, blender.find_blender(self.settings.get("blender")))
+                with self.edit_lock:
+                    self.parts_call(s.add_source, key, path.name, model)
+        src = s.sources[key]
+        return {"source": key, "name": src["name"], "parts": s.tree(src["model"])}
+
+    def api_parts_save(self, body):
+        s = self.parts_session(body)
+        with self.edit_lock:
+            if not s.steps:
+                raise ApiError(400, "nothing has changed yet")
+            data = self.parts_call(lambda: kn5write.write_kn5(s.final_model()))
+            target = self.edit_target(s.car_id, body, "parts")
+            try:
+                if getattr(s, "built", False):
+                    builder.write(s, target)  # a new car from a 3D model: the LODs get the new body too
+                else:
+                    target.write(s.kn5_rel, data)
+            except (edits.EditError, Kn5Error, OSError) as e:
+                if target.mode == "new":
+                    shutil.rmtree(target.dir, ignore_errors=True)
+                raise ApiError(400, str(e))
+            self.parts.close(s.id)
+            return target.finish("Parts (%d changes)" % len(s.steps))
+
+    def api_parts_close(self, body):
+        self.parts.close(str(body.get("session", "")))
+        return {"closed": True}
+
+    # --- importing ---------------------------------------------------------
+
+    def cars_folder(self, dest):
+        """Where mods are installed: one of the added folders (its content/cars if it is the
+        game folder), or one the user picks now."""
+        if dest == "pick":
+            with self.pick_lock:
+                picked = self.pick_folder("Choose the folder for the cars (assettocorsa\\content\\cars)")
+            if not picked:
+                return None
+            path = Path(picked)
+        else:
+            roots = [str(r) for r in self.settings.get("roots") or []]
+            if dest not in roots:
+                raise ApiError(400, "choose one of your folders")
+            path = Path(dest)
+        return path / "content" / "cars" if (path / "content" / "cars").is_dir() else path
+
+    def api_import_archive(self, body):
+        with self.pick_lock:
+            path = self.pick_archive()
+        if not path:
+            return {"import": None}
+        installer.cleanup(self.work_dir())
+        folder, skipped = self.parts_call(installer.unpack, path, self.work_dir())
+        iid = folder.name
+        self.imports[iid] = folder
+        found = installer.contents(folder)
+        if not found["cars"] and not found["skins"]:
+            shutil.rmtree(folder, ignore_errors=True)
+            self.imports.pop(iid, None)
+            raise ApiError(400, "no cars or skins were found in %s" % Path(path).name)
+        return dict(found, **{"import": iid, "name": Path(path).name, "skipped": skipped[:50],
+                              "skippedCount": len(skipped)})
+
+    def api_import_install(self, body):
+        folder = self.imports.get(str(body.get("import", "")))
+        if folder is None or not folder.is_dir():
+            raise ApiError(400, "open the mod again")
+        cars = str_list(body.get("cars", []), "cars", 500)
+        skins = str_list(body.get("skins", []), "skins", 2000)
+        skin_cars = body.get("skinCars") or {}
+        if not isinstance(skin_cars, dict) or not all(isinstance(v, str) for v in skin_cars.values()):
+            raise ApiError(400, "skinCars must map skins to car folder names")
+        conflict = body.get("conflict", "skip")
+        dest = self.cars_folder(body.get("dest"))
+        if dest is None:
+            return {"installed": [], "notes": [], "cancelled": True}
+        with self.edit_lock:
+            r = self.parts_call(installer.install, folder, dest, {"cars": cars, "skins": skins}, conflict,
+                                self.backups_dir(), skin_cars)
+        r["folder"] = str(dest)
+        return r
+
+    def api_import_model(self, body):
+        """Open a 3D file and write it as .glb (to view) or .obj / .stl / .fbx into the output folder."""
+        fmt = body.get("format", "glb")
+        if fmt not in ("glb", "obj", "stl", "fbx"):
+            raise ApiError(400, "format must be glb, obj, stl or fbx")
+        with self.pick_lock:
+            path = self.pick_model()
+        if not path:
+            return {"file": None}
+        path = Path(path)
+        exe = blender.find_blender(self.settings.get("blender"))
+        model = self.parts_call(read_kn5, path) if path.suffix.lower() == ".kn5" else             self.parts_call(importer.load_model, path, exe)
+        out = self.out_dir()
+        out.mkdir(parents=True, exist_ok=True)
+        final = out / ("%s_imported%s" % (re_safe(path.stem)[:60] or "model", convert.FORMAT_EXT[fmt]))
+        tmp = final.with_name(final.name + ".part")
+        glb_tmp = final.with_suffix(".fbxsource.glb")
+        try:
+            conv = convert.Converter(model, {}, log=lambda *a: None, fmt="glb" if fmt == "fbx" else fmt)
+            if fmt == "fbx":
+                if not exe:
+                    raise ApiError(400, "FBX export needs Blender: locate blender.exe first")
+                conv.run(glb_tmp)
+                self.parts_call(blender.glb_to_fbx, exe, glb_tmp, tmp)
+            else:
+                conv.run(tmp, final_path=final)
+            os.replace(tmp, final)
+        finally:
+            for p in (tmp, glb_tmp):
+                if p.exists():
+                    p.unlink()
+        return {"file": final.name, "format": fmt, "size": final.stat().st_size}
+
+    def api_build_start(self, body):
+        """A new car from a 3D model: a parts session on the donor car with its body replaced."""
+        donor = str(body.get("donor", ""))
+        rotate = body.get("rotate", 0)
+        if rotate not in builder.ROTATIONS:
+            raise ApiError(400, "rotate must be 0, 90, 180 or 270")
+        car_dir = self.car_dir(donor)
+        with self.pick_lock:
+            path = self.pick_model()
+        if not path:
+            return {"session": None}
+        path = Path(path)
+        model = self.parts_call(read_kn5, path) if path.suffix.lower() == ".kn5" else             self.parts_call(importer.load_model, path, blender.find_blender(self.settings.get("blender")))
+        with self.edit_lock:
+            s = self.parts_call(self.parts.start, car_dir, donor, None)
+            self.parts_call(builder.build, s, model, path.name, rotate, bool(body.get("zUp")))
+            s.built = True
+        return dict(self.parts_state(s), model=path.name)
+
     def api_history(self, query):
         return {"items": self.history().list()}
 
@@ -546,12 +899,21 @@ class App:
 GET_ROUTES = {"/api/settings": "api_settings", "/api/car": "api_car", "/api/job": "api_job",
               "/api/outputs": "api_outputs", "/api/preview": "api_preview", "/api/blender": "api_blender",
               "/api/materials": "api_materials", "/api/space": "api_space", "/api/skins": "api_skins",
-              "/api/history": "api_history"}
+              "/api/history": "api_history", "/api/edit/info": "api_edit_info", "/api/backups": "api_backups",
+              "/api/editors": "api_editors", "/api/livery/status": "api_livery_status"}
 POST_ROUTES = {"/api/settings": "api_save_settings", "/api/pick": "api_pick", "/api/scan": "api_scan",
                "/api/convert": "api_convert", "/api/open": "api_open", "/api/render": "api_render",
                "/api/job/cancel": "api_job_cancel", "/api/carmeta": "api_carmeta",
                "/api/history/clear": "api_history_clear", "/api/presets/save": "api_preset_save",
-               "/api/presets/delete": "api_preset_delete",
+               "/api/presets/delete": "api_preset_delete", "/api/edit/specs": "api_edit_specs",
+               "/api/backups/restore": "api_backup_restore", "/api/editors/add": "api_editors_add",
+               "/api/editors/remove": "api_editors_remove", "/api/livery/start": "api_livery_start",
+               "/api/livery/open": "api_livery_open", "/api/livery/image": "api_livery_image",
+               "/api/livery/install": "api_livery_install", "/api/parts/start": "api_parts_start",
+               "/api/parts/step": "api_parts_step", "/api/parts/source": "api_parts_source",
+               "/api/parts/save": "api_parts_save", "/api/parts/close": "api_parts_close",
+               "/api/import/archive": "api_import_archive", "/api/import/install": "api_import_install",
+               "/api/import/model": "api_import_model", "/api/build/start": "api_build_start",
                "/api/blender/locate": "api_blender_locate", "/api/blender/open": "api_blender_open"}
 
 
@@ -673,10 +1035,15 @@ class Handler(BaseHTTPRequestHandler):
             if self.cross_site():
                 return self.send(403, {"error": "cross-site request refused"})
 
-            file_route = method == "GET" and (path == "/api/file" or path.startswith(("/out/", "/preview/")))
+            file_route = method == "GET" and (path in ("/api/file", "/api/livery/file")
+                                              or path.startswith(("/out/", "/preview/")))
             if not self.authorized(query, allow_query_token=file_route):
                 return self.send(403, {"error": "missing or wrong token"})
 
+            if file_route and path == "/api/livery/file":
+                f = self.app.livery_call(livery.work_file, self.app.work_dir(), query.get("id", ""),
+                                         query.get("session", ""), query.get("file", ""))
+                return self.send_file(f) if f.is_file() else self.send(404, {"error": "not found"})
             if file_route and path == "/api/file":
                 f = carinfo.resolve_car_file(self.app.car_dir(query.get("car", "")), query.get("path", ""))
                 return self.send_file(f) if f else self.send(404, {"error": "not found"})
