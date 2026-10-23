@@ -286,7 +286,10 @@ class BlenderApiTests(AppTestCase):
         self.app.settings.update(blender=str(self.exe))
         r = self.json("/api/blender/open", {"file": res["file"]})
         self.assertTrue(r["launched"])
-        self.assertEqual(self.launched, [(self.exe, self.out / r["script"])])
+        # compare real files: Windows may give the same temp folder a short name (RUNNER~1)
+        [(exe, script)] = self.launched
+        self.assertEqual(Path(exe).resolve(), self.exe.resolve())
+        self.assertEqual(Path(script).resolve(), (self.out / r["script"]).resolve())
 
     def test_open_refuses_other_files(self):
         self.export()
