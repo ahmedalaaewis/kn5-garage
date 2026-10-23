@@ -1,6 +1,7 @@
 """Finding things in an Assetto Corsa car folder: models, LODs, skins, animations."""
 
 import configparser
+import os
 import re
 from pathlib import Path
 
@@ -110,11 +111,47 @@ def skin_stamp(car_dir, skin_name):
         return 0
 
 
-def find_cars(folder):
+MAX_SCAN_DEPTH = 8        # folders inside folders inside... the added folder
+MAX_SCAN_FOLDERS = 20000  # stop exploring after this many folders (someone added C:\)
+
+
+def _has_kn5(entries):
+    return any(e.name.lower().endswith(".kn5") and e.is_file(follow_symlinks=False) for e in entries)
+
+
+def find_cars(folder, max_depth=MAX_SCAN_DEPTH, max_folders=MAX_SCAN_FOLDERS):
+    """Every car folder (a folder holding a .kn5) at any depth below folder, sorted by path.
+
+    A car folder is not searched further (its skins and textures aren't cars). Hidden folders and
+    links / junctions are skipped, so the search can't loop or wander off to another drive."""
     folder = Path(folder)
-    if any(folder.glob("*.kn5")):
-        return [folder]
-    return sorted(d for d in folder.iterdir() if d.is_dir() and any(d.glob("*.kn5")))
+    found, visited = [], 0
+    stack = [(folder, 0)]
+    while stack and visited < max_folders:
+        path, depth = stack.pop()
+        visited += 1
+        try:
+            with os.scandir(path) as it:
+                entries = list(it)
+        except OSError:
+            continue
+        if _has_kn5(entries):
+            found.append(path)
+            continue
+        if depth >= max_depth:
+            continue
+        subdirs = []
+        for e in entries:
+            try:
+                if e.name.startswith(".") or e.is_symlink() or not e.is_dir(follow_symlinks=False):
+                    continue
+                if getattr(e.stat(follow_symlinks=False), "st_file_attributes", 0) & 0x400:
+                    continue  # a Windows junction (reparse point)
+            except OSError:
+                continue
+            subdirs.append(Path(e.path))
+        stack.extend((d, depth + 1) for d in sorted(subdirs, reverse=True))
+    return sorted(found, key=lambda p: str(p).lower())
 
 
 def output_name(car_dir, skin, preset="render", ext=".glb"):
