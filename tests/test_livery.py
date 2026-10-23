@@ -146,6 +146,7 @@ class LiveryApiTests(AppTestCase):
         self.launched = []
         self.prog = self.dir / "MyPainter.exe"
         self.prog.write_bytes(b"MZ")
+        self.prog.chmod(0o755)  # a program on Linux / macOS too
         self.app.pick_program = lambda: str(self.prog)
         self.app.launch_program = lambda exe, f: self.launched.append((Path(exe).name, Path(f).name))
         self.pic = self.dir / "pic.png"

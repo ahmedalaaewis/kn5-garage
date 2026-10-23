@@ -95,6 +95,8 @@ class Target:
 
     def path(self, rel):
         rel = str(rel).replace("\\", "/")
+        if ":" in rel or rel.startswith("/"):  # C:/..., //server/..., streams: never inside a car on any system
+            raise EditError("refusing to write outside the car folder: %s" % rel)
         p = (self.dir / rel).resolve()
         if self.dir.resolve() not in p.parents:
             raise EditError("refusing to write outside the car folder: %s" % rel)
