@@ -1,16 +1,27 @@
 # KN5 Garage
 
-A garage for Assetto Corsa car mods that runs entirely on your PC: browse your collection, edit
-cars (power, weight, liveries, parts), install mods, and turn `.kn5` cars into files for
-**Blender**, **game engines**, **3D viewers** and **3D printers**.
+A garage for game mods and 3D models that runs entirely on your PC: Assetto Corsa cars, BeamNG.drive
+vehicles, characters, figures and props in 12 3D formats. Browse your collection, edit cars (power,
+weight, liveries, parts), pose characters, install mods, print figures, convert textures, and turn it
+all into files for **Blender**, **game engines**, **3D viewers** and **3D printers**.
 
 ![The library: cards with previews, favourites, tags, duplicate and issue badges, and the details of the selected car](docs/screenshots/library.png)
 
-- Browse your whole car collection: previews, authors, specs, power curves, skins, CSP features.
+- Browse your whole collection: Assetto Corsa cars (previews, authors, specs, power curves, skins,
+  CSP features), **BeamNG.drive** vehicles (folders and zip mods, with their default configuration and
+  skins) and loose **3D files**, all in one library.
+- Open **.kn5, .glb, .gltf, .vrm, .fbx, .dae, .obj, .stl, .ply, .3ds, .pmx and .bvh** without any
+  other program (FBX, COLLADA and MikuMikuDance read natively; rigs and animations come along).
 - Export to **glTF (.glb)**, **OBJ**, **FBX** (through Blender) or **STL**, with presets for
   Blender renders, game engines and 3D printing, a new paint colour and headlights on.
 - Look at any car in 3D first: paint colours, steering, lights, day / night studios,
   animations, measuring, and save pictures, turntables and videos.
+- **Characters:** show the skeleton, pick a bone and pose it, play animations (Mixamo FBX, glTF, BVH
+  motion capture, MMD models, VRM avatars).
+- **3D printing:** any model at a real height in millimetres, repaired (holes closed, triangles
+  facing out), thin surfaces given a wall, cut into pieces that fit your printer, as STL or 3MF.
+- **Textures:** open DDS (compressed too), TGA, PSD, PNG and more; save as PNG, JPEG, TGA, DDS, WebP
+  or BMP, smaller, or with normal maps flipped between DirectX and OpenGL.
 - Open exports in Blender with a ready-made studio scene.
 - **Edit cars:** power, torque, weight, fuel, gearing and turbo; the specs in the game menus;
   your own **livery** painted in Photoshop, Illustrator, GIMP or any image program with a live 3D
@@ -46,6 +57,8 @@ Each release lists a SHA-256 checksum for the zip.
 |---|---|
 | ![3D viewer at night with the lights on and the front wheels turned](docs/screenshots/viewer-night.png) | ![3D viewer in daylight with the skin strip](docs/screenshots/viewer-day.png) |
 | **Night studio**, lights on, steering turned | **Day studio** and the skin strip |
+| ![A motion-capture skeleton with the Bones panel for posing](docs/screenshots/character.png) | ![3D print: height, cuts, repair and wall thickness](docs/screenshots/print.png) |
+| **Characters**: skeleton, bones, posing | **3D print** at a real size, repaired and cut |
 | ![The parts editor: a part selected on the car, with move, colour and swap tools](docs/screenshots/parts-editor.png) | ![The livery studio: paint textures to edit in an image program, with a live 3D preview](docs/screenshots/livery.png) |
 | **Parts editor**: hide, move, recolour, swap | **Livery studio** with live preview |
 | ![The Edit tab: physics, menu specs and power curve](docs/screenshots/edit.png) | ![Import: mods, skin packs, 3D files, and a car from a 3D model](docs/screenshots/import.png) |
@@ -149,6 +162,45 @@ puts them back). Protected cars can't be edited.
   donor's physics, sound, wheels, cockpit and driver; the model replaces its body, scaled to fit.
   It opens in the parts editor so you can adjust it, then **Save…** it as a new car.
 
+### Formats, characters and other games
+
+Add any folder: besides Assetto Corsa cars the scan finds **BeamNG.drive** vehicles (a
+`vehicles/<name>` folder or a zip mod; the default configuration decides which parts show, and its
+`materials.json` gives textures and skins) and every 3D file it can open. **Everything / Assetto
+Corsa / BeamNG.drive / 3D files** above the cards filters by kind.
+
+| Format | Read | Notes |
+|---|---|---|
+| `.kn5` | ✓ | Assetto Corsa; also edited and written |
+| `.glb` `.gltf` `.vrm` | ✓ | with rigs and animations; VRM avatars are glTF |
+| `.fbx` | ✓ | binary FBX 7.x natively (meshes, materials, embedded textures, rigs, animations); text FBX through Blender |
+| `.dae` | ✓ | COLLADA (BeamNG, SketchUp exports); rigged meshes in their rest pose |
+| `.obj` `.stl` `.ply` `.3ds` | ✓ | with `.mtl`, textures and colours where the format has them |
+| `.pmx` | ✓ | MikuMikuDance characters with bones and textures |
+| `.bvh` | ✓ | motion capture: the skeleton is drawn and the motion plays |
+| `.skb` `.skp` | – | SketchUp: its format isn't public; export `.dae` from SketchUp |
+
+**Bones** in the 3D viewer (shown for rigged models) draws the skeleton and lists every bone: pick
+one and turn it with the X / Y / Z sliders, then take a **Snapshot** or **Turntable**.
+
+**Other games.** Forza Horizon and CarX Drift Racing make liveries in the game's own editor, and
+their files are encrypted, so they can't be opened; their liveries can't be imported either. The
+texture tools work for any game that uses ordinary pictures (rFactor 2 skins are DDS, for example).
+
+### 3D printing
+
+**3D print…** under a car or model: choose the height in millimetres, STL or 3MF, and optionally
+heights to cut it into pieces (each cut is closed flat). **Repair** joins matching corners, drops
+broken triangles, turns every triangle outwards and closes holes. Game models are often single
+surfaces without an inside: give them a **wall thickness** instead. The report gives the size,
+volume and whether the result is closed. Files go to `output\print\<name>\`.
+
+### Textures
+
+**Import > Convert textures**: choose pictures (DDS, TGA, PSD, PNG, JPEG, BMP, TIFF, WebP), a format,
+optionally a largest side, and **Flip green** for normal maps (DirectX games ⇄ OpenGL / Blender /
+glTF). Copies go to `output\textures\`; the originals aren't changed.
+
 ### Blender
 
 The top bar shows whether Blender was found (click it to locate `blender.exe`). **Open in Blender**
@@ -210,7 +262,7 @@ Please respect mod authors: exports are for your own use unless the author allow
   Drag car folders onto it to include your own cars (they are only read).
 - `build_exe.bat` builds `dist\KN5Garage.exe`; `python packaging/test_exe.py` checks it from a clean folder.
 - `python tools/make_demo_garage.py` builds the demo cars; `python tools/screenshots.py` remakes the pictures.
-- Pushing a tag like `v1.2.0` makes GitHub build, test and publish the `.exe` on a release.
+- Pushing a tag like `v1.3.0` makes GitHub build, test and publish the `.exe` on a release.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how the code is organised and the project rules.
 
@@ -229,6 +281,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how the code is organised and the pro
 - Cars made from a 3D model are a starting point: the model's own wheels don't turn, and the
   collision shape is the donor's.
 - `.7z` and `.rar` mods need 7-Zip installed; `.zip` works on its own.
+- BeamNG wheels and other parts shared from the game's own `common` folder aren't in mods, so they
+  don't appear. Editing, liveries and the parts editor are for Assetto Corsa cars.
+- FBX: pivots and pre / post rotations are read; constraints, blend shapes and non-linear curve
+  tangents aren't. COLLADA rigs show in their rest pose. Poses aren't saved into files.
+- Hole closing works best on small holes; big openings and thin surfaces print better with a wall
+  thickness. Cutting closes flat cuts; very complex outlines may need fixing in the slicer.
 
 ## Licence and credits
 

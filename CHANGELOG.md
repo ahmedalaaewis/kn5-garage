@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.3.0
+
+- **Not only Assetto Corsa:** BeamNG.drive vehicles (folders and zip mods: default configuration,
+  materials and skins) and loose 3D files appear in the library next to the cars, with a filter by
+  kind. Preview, export, favourites, tags and compare work for all of them.
+- **12 formats without other programs:** native readers for binary FBX (rigs and animations
+  included), COLLADA (.dae), STL, PLY, 3DS, MikuMikuDance PMX and BVH motion capture; glTF and VRM
+  keep their rigs and animations. Clear messages for formats that can't be read (SketchUp .skb /
+  .skp, .blend, Forza files…).
+- **Characters:** the viewer shows the skeleton, lists the bones and poses them with sliders;
+  walking animations loop.
+- **3D printing:** real size in millimetres, repair, wall thickness for thin surfaces, cutting into
+  closed pieces, STL and 3MF.
+- **Textures:** convert DDS (compressed too), TGA, PSD and more to PNG, JPEG, TGA, DDS, WebP or BMP,
+  resized or with normal maps flipped.
+- Wording made game-neutral; the new screens are translated into all 12 other languages.
+
 ## 1.2.0
 
 - **Edit cars** (new Edit tab): engine power, rev limiter, mass, fuel, final drive and turbo

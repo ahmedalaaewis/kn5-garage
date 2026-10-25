@@ -9,6 +9,7 @@ import { openExportDialog } from './exporter.js';
 import { t } from './i18n.js';
 import { flagPills, selectCar, showPath, statusLabel, toggleFavourite } from './library.js';
 import { isBad, safeUrl } from './model.js';
+import { openPrint } from './printer.js';
 import { carById, emit, on, state } from './state.js';
 import { flash } from './toast.js';
 import { openPreview, openViewer } from './viewer-ui.js';
@@ -21,7 +22,7 @@ export async function loadDetails(id) {
 export async function renderDetail() {
   const pane = $('#detail');
   const id = state.selected;
-  if (!id) { pane.replaceChildren(h('div', { class: 'detail-empty muted' }, t('Select a car to see its details'))); return; }
+  if (!id) { pane.replaceChildren(h('div', { class: 'detail-empty muted' }, t('Select something to see its details'))); return; }
   if (!state.details[id]) {
     pane.replaceChildren(h('div', { class: 'detail-empty muted' }, h('span', { class: 'spinner' })));
     try { await loadDetails(id); }
@@ -41,7 +42,8 @@ export async function renderDetail() {
       'aria-pressed': String(!!c.favourite), onclick: () => toggleFavourite(id),
     }, '★'),
     h('div', { class: 'hero-text' },
-      h('div', { class: 'hero-brand' }, d.badge && img(fileUrl(id, d.badge)), d.brand || t('Unknown brand')),
+      h('div', { class: 'hero-brand' }, d.badge && img(fileUrl(id, d.badge)),
+        d.brand || (d.kind && d.kind !== 'ac' ? (d.format || d.kindLabel) : t('Unknown brand'))),
       h('h2', {}, d.name),
     ),
   );
@@ -74,13 +76,16 @@ export async function renderDetail() {
       h('div', {}, h('b', {}, statusLabel(d.status)), d.statusText));
   }
 
+  const kind = d.kind || 'ac';
+  const tab = (state.tab === 'edit' && kind !== 'ac') || (state.tab === 'skins' && kind === 'model') ? 'overview' : state.tab;
   const tabs = h('div', { class: 'tabs', role: 'tablist' },
-    ...[['overview', t('Overview')], ['skins', `${t('Skins')} (${d.skins.length})`], ['files', t('Files')], ['edit', t('Edit')]].map(([k, label]) =>
-      h('button', { class: state.tab === k ? 'on' : '', role: 'tab', 'aria-selected': String(state.tab === k),
+    ...[['overview', t('Overview')], ['skins', `${t('Skins')} (${d.skins.length})`], ['files', t('Files')], ['edit', t('Edit')]]
+      .filter(([k]) => (k !== 'edit' || (d.kind || 'ac') === 'ac') && (k !== 'skins' || d.kind !== 'model')).map(([k, label]) =>
+      h('button', { class: tab === k ? 'on' : '', role: 'tab', 'aria-selected': String(tab === k),
         onclick: () => { state.tab = k; renderDetail(); } }, label)),
   );
-  const panel = state.tab === 'skins' ? skinsTab(d) : state.tab === 'files' ? filesTab(d)
-    : state.tab === 'edit' ? editTab(d) : overviewTab(d);
+  const panel = tab === 'skins' ? skinsTab(d) : tab === 'files' ? filesTab(d)
+    : tab === 'edit' ? editTab(d) : overviewTab(d);
 
   pane.replaceChildren(hero,
     h('div', { class: 'detail-body' }, chips, h('div', { class: 'card-flags inline' }, flagPills(c)), author,
@@ -256,6 +261,8 @@ function actionBar(d, skin) {
       onclick: () => openExportDialog([d.id]),
     }, t(running ? 'Exporting…' : done ? 'Export again…' : 'Export…'))));
   const paint = state.paintNames[d.id];
+  children.push(h('div', { class: 'action-tools' },
+    h('button', { class: 'btn ghost small', disabled: !canExport, onclick: () => openPrint(d.id) }, t('3D print…'))));
   children.push(h('div', { class: 'action-sub' },
     canExport ? (skin ? t('Skin: {s}', { s: skin.name }) : t('Using the textures inside the model')) : t('This car can’t be exported'),
     paint?.length ? ` · ${t('Paint parts')}: ${paint.length}` : ''));

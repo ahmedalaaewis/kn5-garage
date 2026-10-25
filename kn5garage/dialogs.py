@@ -13,7 +13,7 @@ def _tk():
     return root, filedialog
 
 
-def pick_folder(title="Choose a car folder, or your assettocorsa\\content\\cars folder"):
+def pick_folder(title="Choose a folder with game mods or 3D files"):
     root, filedialog = _tk()
     if root is None:
         return None
@@ -33,6 +33,21 @@ def pick_file(title, filetypes):
         root.destroy()
 
 
+def pick_files(title, filetypes):
+    root, filedialog = _tk()
+    if root is None:
+        return []
+    try:
+        return list(filedialog.askopenfilenames(title=title, filetypes=filetypes) or [])
+    finally:
+        root.destroy()
+
+
+def pick_textures():
+    from .texturetool import READ
+    return pick_files("Choose textures or pictures", [("Pictures", " ".join("*" + e for e in READ)), ("All files", "*")])
+
+
 def pick_image():
     return pick_file("Choose a picture for the livery",
                      [("Pictures", "*.png *.jpg *.jpeg *.bmp *.tga *.tif *.tiff *.webp *.dds"), ("All files", "*")])
@@ -43,7 +58,8 @@ def pick_program():
 
 
 def pick_model():
-    return pick_file("Choose a 3D model", [("3D models", "*.glb *.gltf *.obj *.fbx *.kn5"), ("All files", "*")])
+    from .formats import EXTENSIONS
+    return pick_file("Choose a 3D model", [("3D models", " ".join("*" + e for e in EXTENSIONS)), ("All files", "*")])
 
 
 def pick_archive():

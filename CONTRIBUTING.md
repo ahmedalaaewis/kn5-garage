@@ -25,7 +25,10 @@ Node.js is optional; it runs the web logic tests in `tests/web`.
 | `kn5garage/edits.py`, `physics.py` | Saving edits (new car or original + backup, undo), physics and menu specs |
 | `kn5garage/livery.py`, `editors.py` | The livery studio, finding and starting image programs |
 | `kn5garage/parts.py`, `builder.py` | The parts editor (steps with undo / redo), making a car from a 3D model |
-| `kn5garage/importer.py`, `installer.py` | Reading `.glb` / `.gltf` / `.obj` / `.fbx`, installing mods from archives |
+| `kn5garage/importer.py`, `installer.py` | Reading `.glb` / `.gltf` / `.vrm` / `.obj` and shared helpers, installing mods from archives |
+| `kn5garage/formats/` | One `load(path)` for every 3D format: `fbx.py`, `collada.py`, `simple.py` (STL, PLY, 3DS), `characters.py` (PMX, BVH) |
+| `kn5garage/items.py`, `beamng.py` | What the library holds (AC cars, BeamNG vehicles, 3D files) and BeamNG vehicles |
+| `kn5garage/printing.py`, `texturetool.py` | 3D printing (repair, thickness, cutting, STL / 3MF), texture conversion |
 | `kn5garage/server.py` | The local web server and API |
 | `kn5garage/jobs.py`, `cache.py`, `settings.py`, `userdata.py` | Export queue, scan / preview caches, settings, favourites / tags / history |
 | `kn5garage/blender.py`, `dialogs.py`, `cli.py` | Blender (scene script, FBX), file pickers, command line |

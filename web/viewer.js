@@ -45,6 +45,9 @@ export class Viewer3D {
     this.painted = new Set();
     this.lightsOn = false;
     this.steer = { wheels: [], columns: [], angle: 0 };
+    this.bones = [];
+    this.bonesShown = false;
+    this.skeletonHelper = null;
     this.measuring = false;
     this.measurePoints = [];
     this.raf = 0;
@@ -163,6 +166,8 @@ export class Viewer3D {
     this.stopAnimations();
     this.clearMeasure();
     this.highlight.visible = false;
+    this.markedBone = null;
+    if (this.boneMarker) this.boneMarker.visible = false;
     this.select(null);
     if (this.model) { this.scene.remove(this.model); disposeModel(this.model); }
     this.scene.add(model);
@@ -173,13 +178,14 @@ export class Viewer3D {
     this.size = size;
     this.center = box.getCenter(new THREE.Vector3()).setY(size.y / 2);
     this.findSteering();
+    this.findBones();
     this.fitShadow();
     this.setMode(this.mode);
     this.setLights(this.lightsOn);
     if (!(keepView && hadModel)) this.reset();
     this.onInfo?.({
       meshes, tris: Math.round(tris), size, animations: this.clips.map((c) => c.name),
-      canSteer: this.steer.wheels.length > 0, lights: this.lightMaterials().length,
+      canSteer: this.steer.wheels.length > 0, lights: this.lightMaterials().length, bones: this.bones.length,
     });
   }
 
@@ -372,7 +378,8 @@ export class Viewer3D {
     if (!clip || !this.mixer) return false;
     this.mixer.stopAllAction();
     const action = this.mixer.clipAction(clip);
-    action.setLoop(this.T.THREE.LoopPingPong, Infinity);
+    // characters walk in loops; car doors and wipers go back and forth
+    action.setLoop(this.bones.length ? this.T.THREE.LoopRepeat : this.T.THREE.LoopPingPong, Infinity);
     action.reset().play();
     return true;
   }
@@ -448,6 +455,87 @@ export class Viewer3D {
       this.measureGroup.add(line);
       this.onMeasure?.(a.distanceTo(b), 2);
     } else this.onMeasure?.(null, 1);
+  }
+
+  // ---- characters: bones, showing the skeleton, posing
+
+  // Bones: the joints of rigged meshes; for a skeleton without a mesh (BVH), the animated nodes
+  findBones() {
+    const set = new Set();
+    this.model.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.bones.forEach((b) => set.add(b)); });
+    if (!set.size) {
+      const animated = new Set(this.clips.flatMap((c) => c.tracks.map((tr) => tr.name.split('.')[0])));
+      this.model.traverse((o) => { if (!o.isMesh && animated.has(o.name)) set.add(o); });
+    }
+    this.bones = [...set];
+    for (const b of this.bones) b.userData.rest = b.quaternion.clone();
+    this.skeletonHelper?.removeFromParent();
+    this.skeletonHelper = null;
+    if (this.bonesShown) this.showBones(true);
+  }
+
+  // A line from every bone to its parent bone, drawn on top of the model (updated each frame)
+  showBones(on) {
+    this.bonesShown = on;
+    this.skeletonHelper?.removeFromParent();
+    this.skeletonHelper?.geometry.dispose();
+    this.skeletonHelper = null;
+    if (!on || !this.bones.length) return;
+    const { THREE } = this.T;
+    const set = new Set(this.bones);
+    this.bonePairs = this.bones.filter((b) => set.has(b.parent)).map((b) => [b, b.parent]);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(Math.max(this.bonePairs.length, 1) * 6), 3));
+    const lines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x4dd2ff, depthTest: false, transparent: true }));
+    lines.renderOrder = 20;
+    lines.frustumCulled = false;
+    this.skeletonHelper = lines;
+    this.scene.add(lines);
+    this.updateBoneLines();
+  }
+
+  updateBoneLines() {
+    if (this.markedBone && this.boneMarker) this.markedBone.getWorldPosition(this.boneMarker.position);
+    const lines = this.skeletonHelper;
+    if (!lines) return;
+    const pos = lines.geometry.attributes.position;
+    const v = new this.T.THREE.Vector3();
+    this.bonePairs.forEach(([b, p], i) => {
+      b.getWorldPosition(v); pos.setXYZ(i * 2, v.x, v.y, v.z);
+      p.getWorldPosition(v); pos.setXYZ(i * 2 + 1, v.x, v.y, v.z);
+    });
+    pos.needsUpdate = true;
+  }
+
+  // degrees about the bone's own X / Y / Z, on top of its rest pose
+  poseBone(i, deg) {
+    const b = this.bones[i];
+    if (!b) return;
+    const { THREE } = this.T;
+    this.stopAnimations();
+    const r = deg.map((d) => THREE.MathUtils.degToRad(d));
+    b.quaternion.copy(b.userData.rest).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(r[0], r[1], r[2])));
+    b.updateMatrixWorld(true);
+  }
+
+  // a small dot on the chosen bone (kept on it while it moves)
+  markBone(i) {
+    const { THREE } = this.T;
+    this.markedBone = i == null ? null : this.bones[i];
+    if (!this.boneMarker) {
+      this.boneMarker = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12),
+        new THREE.MeshBasicMaterial({ color: 0xffd24d, depthTest: false, transparent: true, opacity: 0.9 }));
+      this.boneMarker.renderOrder = 21;
+      this.scene.add(this.boneMarker);
+    }
+    this.boneMarker.visible = !!this.markedBone;
+    this.boneMarker.scale.setScalar(Math.max((this.size?.length() || 1) / 150, 0.004));
+    this.updateBoneLines();
+  }
+
+  resetPose() {
+    for (const b of this.bones) b.quaternion.copy(b.userData.rest);
+    this.model?.updateMatrixWorld(true);
   }
 
   // ---- parts (by glTF node index)
@@ -597,6 +685,7 @@ export class Viewer3D {
       this.controls.autoRotate = !!this.spinBox?.checked && !this.measuring;
       this.controls.update();
       this.mixer?.update(this.clock.getDelta());
+      if (this.bonesShown || this.markedBone) this.updateBoneLines();
       this.renderer.render(this.scene, this.camera);
     };
     loop();

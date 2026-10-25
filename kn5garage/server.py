@@ -9,7 +9,8 @@ Security model (see SECURITY.md):
     sent in the X-Token header (a ?t= query token only works for loading files);
   * cross-site requests are refused (Origin / Sec-Fetch-Site), and the page has a strict
     Content-Security-Policy and can't be framed;
-  * car folders are only read; files are only written to the output folder.
+  * mod folders and 3D files are only read; edits ask first and keep backups; everything else
+    is written to the output folder.
 """
 
 import argparse
@@ -32,7 +33,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 from . import (__version__, blender, builder, carfiles, carinfo, convert, dialogs, editors, edits, importer, installer,
-               kn5write, livery, parts, paths, physics)
+               items, kn5write, livery, parts, paths, physics, printing, texturetool)
 from .cache import PreviewCache, ScanCache
 from .jobs import Jobs
 from .kn5 import Kn5Error, read_kn5
@@ -145,14 +146,15 @@ def str_list(value, what, max_items, max_len=1024):
 class App:
     def __init__(self, settings_path=None, default_out=None, pick_folder=None, open_path=None,
                  pick_file=None, launch_blender=None, pick_image=None, pick_program=None, launch_program=None,
-                 pick_model=None, pick_archive=None):
+                 pick_model=None, pick_archive=None, pick_textures=None):
         self.token = secrets.token_urlsafe(32)
         settings_path = Path(settings_path or PROJECT_DIR / "settings.json")
         self.settings = Settings(settings_path, default_out or PROJECT_DIR / "output")
         self.library = Library(settings_path.with_name("library.json"))
         self.jobs = Jobs(self.run_car, on_result=self.record_history)
         self._history = None
-        self.cars = {}  # id -> Path, from the last scan
+        self.cars = {}   # id -> Path (a folder, or a file for loose 3D files), from the last scan
+        self.items = {}  # id -> items.Item (what kind of entry it is)
         self.cars_lock = threading.Lock()
         self.pick_folder = pick_folder or dialogs.pick_folder
         self.pick_file = pick_file or dialogs.pick_blender_exe
@@ -163,6 +165,7 @@ class App:
         self.launch_program = launch_program or editors.launch
         self.pick_model = pick_model or dialogs.pick_model
         self.pick_archive = pick_archive or dialogs.pick_archive
+        self.pick_textures = pick_textures or dialogs.pick_textures
         self.parts = parts.Sessions()
         self.imports = {}  # import id -> unpacked folder
         self.pick_lock = threading.Lock()
@@ -190,11 +193,22 @@ class App:
             self._history = History(path)
         return self._history
 
-    def car_dir(self, car_id):
+    def item(self, car_id):
+        """Any library entry: an AC car, a BeamNG vehicle or a 3D file."""
         with self.cars_lock:
-            if car_id not in self.cars:
+            if car_id not in self.items:
                 raise ApiError(404, "unknown car (scan the folder first)")
-            return self.cars[car_id]
+            return self.items[car_id]
+
+    def car_dir(self, car_id):
+        """An Assetto Corsa car folder (editing, liveries, skins and files work on these)."""
+        it = self.item(car_id)
+        if it.kind != "ac":
+            raise ApiError(400, "this only works with Assetto Corsa cars")
+        return it.path
+
+    def cache_root(self):
+        return self.out_dir() / ".cache"
 
     # --- export jobs -----------------------------------------------------
 
@@ -206,12 +220,16 @@ class App:
 
     def run_car(self, car_id, car_dir, opts, log, progress):
         preset = opts.get("preset", "render")
-        r = convert.convert_car(car_dir, opts["out"], opts.get("skin"), opts.get("flip_green", True), log=log,
-                                progress=progress, preset=preset, paint=opts.get("paint"),
-                                paint_mode=opts.get("paint_mode", "tint"), paint_names=opts.get("paint_names"),
-                                texture_size=opts.get("texture_size"), jpeg_quality=opts.get("jpeg_quality"),
-                                lights_on=opts.get("lights_on", False),
-                                fbx_converter=self.fbx_converter() if preset == "fbx" else None)
+        it = self.items.get(car_id)
+        common = dict(preset=preset, paint=opts.get("paint"), paint_mode=opts.get("paint_mode", "tint"),
+                      paint_names=opts.get("paint_names"), texture_size=opts.get("texture_size"),
+                      jpeg_quality=opts.get("jpeg_quality"), lights_on=opts.get("lights_on", False),
+                      fbx_converter=self.fbx_converter() if preset == "fbx" else None, log=log, progress=progress)
+        if it is not None and it.kind != "ac":
+            r = items.convert_item(it, opts["out"], opts.get("skin"), cache_root=self.cache_root(),
+                                   blender_exe=blender.find_blender(self.settings.get("blender")), **common)
+        else:
+            r = convert.convert_car(car_dir, opts["out"], opts.get("skin"), opts.get("flip_green", True), **common)
         result = {"file": r["path"].name, "size": r["path"].stat().st_size, "protected": r["protected"],
                   "skin": r["skin"], "report": r["report"], "preset": r["preset"]}
         if opts.get("blender_script") and r["path"].suffix == ".glb":
@@ -252,7 +270,7 @@ class App:
 
     def api_pick(self, body):
         what = body.get("what")
-        titles = {"root": "Add a car folder, or an assettocorsa\\content\\cars folder",
+        titles = {"root": "Add a folder with game mods or 3D files (for example assettocorsa\\content\\cars)",
                   "out": "Choose where the exported files go"}
         if what not in titles:
             raise ApiError(400, "what must be 'root' or 'out'")
@@ -279,34 +297,55 @@ class App:
         if missing:
             raise ApiError(400, "folder not found: %s" % "; ".join(missing))
         self.settings.update(roots=roots)
-        dirs, origin, seen = [], [], set()
+        found, origin, seen = [], [], set()
         for root in roots:
-            for d in carfiles.find_cars(Path(root)):
-                key = d.resolve()
-                if key not in seen:
-                    seen.add(key)
-                    dirs.append(d)
+            for it in items.find_items(Path(root), exclude=[self.out_dir()]):
+                if it.key() not in seen:
+                    seen.add(it.key())
+                    found.append(it)
                     origin.append(root)
         cache = self.scan_cache()
+
+        def summarise(it):
+            return cache.summary(it.ident(), lambda _: self.safe_item_summary(it), items.signature(it))
         with ThreadPoolExecutor(8) as pool:
-            cars = list(pool.map(lambda d: cache.summary(d, safe_summary), dirs))
+            cars = list(pool.map(summarise, found))
         ids, used = [], {}
-        for c in cars:  # the same folder name in two places gets "(2)", "(3)"...
+        for c in cars:  # the same name in two places gets "(2)", "(3)"...
             n = used.get(c["id"].lower(), 0) + 1
             used[c["id"].lower()] = n
             ids.append(c["id"] if n == 1 else "%s (%d)" % (c["id"], n))
-        for c, i, root, d in zip(cars, ids, origin, dirs):
-            c["id"], c["root"], c["folder"] = i, root, str(d)
-            c["favourite"], c["userTags"] = self.library.get(d)
+        for c, i, root, it in zip(cars, ids, origin, found):
+            c["id"], c["root"], c["folder"] = i, root, str(it.path)
+            c["kind"], c["kindLabel"] = it.kind, items.KIND_LABELS[it.kind]
+            c["favourite"], c["userTags"] = self.library.get(it.ident())
         mark_duplicates(cars)
-        mark_identical(cars, dirs, cache)
-        cache.save(keep=dirs)
+        ac = [(c, it.path) for c, it in zip(cars, found) if it.kind == "ac"]
+        mark_identical([c for c, _ in ac], [d for _, d in ac], cache)
+        cache.save(keep=[it.ident() for it in found])
         with self.cars_lock:
-            self.cars = {c["id"]: d for c, d in zip(cars, dirs)}
+            self.items = {c["id"]: it for c, it in zip(cars, found)}
+            self.cars = {c["id"]: it.path for c, it in zip(cars, found)}
         return {"roots": roots, "cars": cars}
 
+    def safe_item_summary(self, it):
+        if it.kind == "ac":
+            return safe_summary(it.path)
+        try:
+            return items.summary(it)
+        except Exception as e:
+            return {"id": it.path.stem, "name": it.path.name, "status": "encrypted", "kind": it.kind,
+                    "statusText": "Couldn't read this: %s" % e, "specs": {}, "tags": [], "issues": ["unreadable"],
+                    "kn5": None, "kn5Size": 0}
+
     def api_car(self, query):
-        return carinfo.car_details(self.car_dir(query.get("id", "")))
+        it = self.item(query.get("id", ""))
+        if it.kind == "ac":
+            return dict(carinfo.car_details(it.path), kind="ac")
+        try:
+            return items.details(it, self.cache_root())
+        except (OSError, ValueError, Kn5Error) as e:
+            raise ApiError(400, str(e))
 
     def api_materials(self, query):
         try:
@@ -319,7 +358,7 @@ class App:
         if not isinstance(ids, list) or not ids:
             raise ApiError(400, "no cars selected")
         str_list(ids, "ids", MAX_IDS)
-        cars = [(i, self.car_dir(i)) for i in ids]
+        cars = [(i, self.item(i).path) for i in ids]
         skin = body.get("skin") if len(ids) == 1 else None
         if skin is not None and not isinstance(skin, str):
             raise ApiError(400, "skin must be a name")
@@ -359,7 +398,7 @@ class App:
 
     def api_carmeta(self, body):
         """Favourite star and the user's own tags for a car (remembered by its folder)."""
-        car_dir = self.car_dir(str(body.get("id", "")))
+        car_dir = self.item(str(body.get("id", ""))).ident()
         fav = body.get("favourite")
         if fav is not None and not isinstance(fav, bool):
             raise ApiError(400, "favourite must be true or false")
@@ -375,9 +414,15 @@ class App:
 
     def api_space(self, query):
         """Disk use of every scanned car (model, skins, the rest) and what identical copies waste."""
-        def measure(item):
-            car_id, d = item
+        def measure(entry):
+            car_id, d = entry
             sizes = {"model": 0, "skins": 0, "other": 0}
+            if d.is_file():  # a 3D file or a zip mod
+                try:
+                    sizes["model"] = d.stat().st_size
+                except OSError:
+                    pass
+                return dict(id=car_id, total=sizes["model"], **sizes)
             for f in d.rglob("*"):
                 try:
                     if not f.is_file():
@@ -609,10 +654,7 @@ class App:
             path = Path(path)
             key = "file:%s" % path
             if key not in s.sources:
-                if path.suffix.lower() == ".kn5":
-                    model = self.parts_call(read_kn5, path)
-                else:
-                    model = self.parts_call(importer.load_model, path, blender.find_blender(self.settings.get("blender")))
+                model = self.parts_call(importer.load_model, path, blender.find_blender(self.settings.get("blender")))
                 with self.edit_lock:
                     self.parts_call(s.add_source, key, path.name, model)
         src = s.sources[key]
@@ -706,7 +748,7 @@ class App:
             return {"file": None}
         path = Path(path)
         exe = blender.find_blender(self.settings.get("blender"))
-        model = self.parts_call(read_kn5, path) if path.suffix.lower() == ".kn5" else             self.parts_call(importer.load_model, path, exe)
+        model = self.parts_call(importer.load_model, path, exe)
         out = self.out_dir()
         out.mkdir(parents=True, exist_ok=True)
         final = out / ("%s_imported%s" % (re_safe(path.stem)[:60] or "model", convert.FORMAT_EXT[fmt]))
@@ -740,12 +782,81 @@ class App:
         if not path:
             return {"session": None}
         path = Path(path)
-        model = self.parts_call(read_kn5, path) if path.suffix.lower() == ".kn5" else             self.parts_call(importer.load_model, path, blender.find_blender(self.settings.get("blender")))
+        model = self.parts_call(importer.load_model, path, blender.find_blender(self.settings.get("blender")))
         with self.edit_lock:
             s = self.parts_call(self.parts.start, car_dir, donor, None)
             self.parts_call(builder.build, s, model, path.name, rotate, bool(body.get("zUp")))
             s.built = True
         return dict(self.parts_state(s), model=path.name)
+
+    # --- 3D printing ------------------------------------------------------
+
+    def item_model(self, it, skin=None):
+        """Any library entry as a model (an AC car: its main .kn5, without a skin)."""
+        try:
+            if it.kind == "ac":
+                main = carfiles.find_main_kn5(it.path)
+                if main is None:
+                    raise ApiError(400, "this car has no model")
+                return read_kn5(main)
+            return items.load_model(it, skin, self.cache_root(), blender.find_blender(self.settings.get("blender")))
+        except (Kn5Error, OSError) as e:
+            raise ApiError(400, str(e))
+
+    def api_print(self, body):
+        """Make a printable STL / 3MF: real size, repaired, cut into pieces if asked."""
+        car_id = str(body.get("id", ""))
+        it = self.item(car_id)
+        height = body.get("heightMm")
+        if height is not None and (not isinstance(height, (int, float)) or isinstance(height, bool)
+                                   or not 1 <= height <= 2000):
+            raise ApiError(400, "heightMm must be 1-2000")
+        cuts = body.get("cuts") or []
+        if not isinstance(cuts, list) or len(cuts) > printing.MAX_CUTS or not all(
+                isinstance(c, (int, float)) and not isinstance(c, bool) and c > 0 for c in cuts):
+            raise ApiError(400, "cuts must be up to %d heights in mm" % printing.MAX_CUTS)
+        fmt = body.get("format", "stl")
+        if fmt not in ("stl", "3mf"):
+            raise ApiError(400, "format must be stl or 3mf")
+        thickness = body.get("thicknessMm")
+        if thickness is not None and (not isinstance(thickness, (int, float)) or isinstance(thickness, bool)
+                                      or not 0.2 <= thickness <= 50):
+            raise ApiError(400, "thicknessMm must be 0.2-50")
+        model = self.item_model(it)
+        name = re_safe(it.inner.split("/")[-1] if it.inner else (it.path.stem if it.path.is_file() else it.path.name))[:60] or "model"
+        folder = self.out_dir() / "print" / name
+        with self.edit_lock:
+            try:
+                r = printing.prepare(model, folder, name, height_mm=height, repair_mesh=body.get("repair", True) is not False,
+                                     cuts=cuts, fmt=fmt, thickness=thickness)
+            except ValueError as e:
+                raise ApiError(400, str(e))
+        return {"files": [f.name for f in r["files"]], "folder": str(folder), "report": r["report"]}
+
+    # --- textures ------------------------------------------------------------
+
+    def api_textures_convert(self, body):
+        """Pictures chosen in a file dialog, saved in another format into output/textures."""
+        fmt = body.get("format", "png")
+        size = body.get("maxSize")
+        if fmt not in texturetool.WRITE:
+            raise ApiError(400, "format must be one of %s" % ", ".join(texturetool.WRITE))
+        if size is not None and size not in texturetool.SIZES:
+            raise ApiError(400, "maxSize must be one of %s" % list(texturetool.SIZES))
+        with self.pick_lock:
+            paths = self.pick_textures()
+        if not paths:
+            return {"files": [], "folder": None}
+        if len(paths) > texturetool.MAX_FILES:
+            raise ApiError(400, "choose up to %d pictures at a time" % texturetool.MAX_FILES)
+        folder = self.out_dir() / "textures"
+        done, failed = [], []
+        for p in paths:
+            try:
+                done.append(texturetool.convert(p, folder, fmt, size, bool(body.get("flipGreen"))))
+            except (edits.EditError, OSError) as e:
+                failed.append({"from": Path(p).name, "error": str(e)})
+        return {"files": done, "failed": failed, "folder": str(folder)}
 
     def api_history(self, query):
         return {"items": self.history().list()}
@@ -789,11 +900,37 @@ class App:
             raise ApiError(404, "unknown job")
         return {"cancelled": True}
 
+    def item_preview(self, car_id, it, skin):
+        """The preview of a BeamNG vehicle or a 3D file (made once, then cached)."""
+        st = it.path.stat()
+        stamp = "%d_%d" % (int(st.st_mtime), st.st_size)
+        if it.kind == "beamng" and not it.inner:
+            stamp += "_%d" % max((int(f.stat().st_mtime) for f in it.path.rglob("*") if f.is_file()), default=0)
+        prefix = re_safe("%s__%s__" % (car_id, skin or "default"))
+        name = prefix + re_safe(stamp) + ".glb"
+        previews = self.preview_cache()
+        path = previews.path(name)
+        with self.preview_lock:
+            if not path.is_file():
+                try:
+                    items.convert_item(it, previews.folder, skin, preset="preview", out_name=name,
+                                       cache_root=self.cache_root(), log=lambda *a: None,
+                                       blender_exe=blender.find_blender(self.settings.get("blender")))
+                except (Kn5Error, OSError) as e:
+                    raise ApiError(400, str(e))
+                previews.prune(keep=name, prefix=prefix)
+            else:
+                os.utime(path)
+        return {"url": "/preview/" + name}
+
     def api_preview(self, query):
         """A light .glb (512 px textures) of a car with one skin, for the 3D skin preview."""
         car_id = query.get("id", "")
-        car_dir = self.car_dir(car_id)
         skin = query.get("skin") or None
+        it = self.item(car_id)
+        if it.kind != "ac":
+            return self.item_preview(car_id, it, skin)
+        car_dir = it.path
         main = carfiles.find_main_kn5(car_dir)
         if main is None:
             raise ApiError(400, "this car has no model")
@@ -888,10 +1025,15 @@ class App:
             if sub:
                 path = path / (re_safe(str(sub))[:80] or "render")
             path.mkdir(parents=True, exist_ok=True)
+        elif what == "textures":
+            path = self.out_dir() / "textures"
+            path.mkdir(parents=True, exist_ok=True)
         elif what == "car":
-            path = self.car_dir(body.get("id", ""))
+            path = self.item(body.get("id", "")).path
+            if path.is_file():
+                path = path.parent  # a 3D file or a zip: show the folder it is in
         else:
-            raise ApiError(400, "what must be 'out', 'renders' or 'car'")
+            raise ApiError(400, "what must be 'out', 'renders', 'textures' or 'car'")
         self.open_path(path)
         return {"opened": str(path)}
 
@@ -914,6 +1056,7 @@ POST_ROUTES = {"/api/settings": "api_save_settings", "/api/pick": "api_pick", "/
                "/api/parts/save": "api_parts_save", "/api/parts/close": "api_parts_close",
                "/api/import/archive": "api_import_archive", "/api/import/install": "api_import_install",
                "/api/import/model": "api_import_model", "/api/build/start": "api_build_start",
+               "/api/print": "api_print", "/api/textures/convert": "api_textures_convert",
                "/api/blender/locate": "api_blender_locate", "/api/blender/open": "api_blender_open"}
 
 

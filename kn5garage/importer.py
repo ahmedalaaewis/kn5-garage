@@ -30,30 +30,9 @@ class ImportError3D(Kn5Error):
 
 
 def load_model(path, blender_exe=None):
-    """Any supported 3D file -> a kn5-like model (root dummy named after the file)."""
-    path = Path(path)
-    if not path.is_file():
-        raise ImportError3D("file not found")
-    if path.stat().st_size > MAX_FILE:
-        raise ImportError3D("the file is larger than 1 GB")
-    ext = path.suffix.lower()
-    try:
-        if ext in (".glb", ".gltf"):
-            return load_gltf(path)
-        if ext == ".obj":
-            return load_obj(path)
-    except (KeyError, IndexError, TypeError, ValueError, struct.error) as e:
-        raise ImportError3D("damaged %s file (%s)" % (ext, type(e).__name__))
-    if ext == ".fbx":
-        if not blender_exe:
-            raise ImportError3D("FBX files are read through Blender: locate blender.exe first")
-        import tempfile
-        from .blender import fbx_to_glb
-        with tempfile.TemporaryDirectory() as t:
-            glb = Path(t) / (path.stem + ".glb")
-            fbx_to_glb(blender_exe, path, glb)
-            return load_gltf(glb)
-    raise ImportError3D("only .glb, .gltf, .obj and .fbx files can be opened")
+    """Any supported 3D file -> a kn5-like model (see formats/__init__.py for the list)."""
+    from .formats import load
+    return load(path, blender_exe)
 
 
 def empty_model(name):
@@ -107,8 +86,11 @@ def _solid_texture(model, rgba, name):
     return _texture(model, name, buf.getvalue())
 
 
-def _mesh_nodes(name, pos, nrm, uv, tri, material):
-    """kn5 mesh nodes for a triangle mesh, split so each has at most 65535 vertices."""
+def _mesh_nodes(name, pos, nrm, uv, tri, material, skin=None):
+    """kn5 mesh nodes for a triangle mesh, split so each has at most 65535 vertices.
+
+    skin: (bones, joints, weights) for a rigged mesh: bones = [(bone node name, inverse bind
+    matrix as 16 floats, column-major)], joints / weights = n x 4 per vertex."""
     pos = np.asarray(pos, np.float32)
     if nrm is None or len(nrm) != len(pos):
         nrm = vertex_normals(pos, tri)
@@ -116,15 +98,78 @@ def _mesh_nodes(name, pos, nrm, uv, tri, material):
         uv = np.zeros((len(pos), 2), np.float32)
     verts = np.hstack([pos, nrm, uv, np.zeros((len(pos), 3), np.float32)]).astype(np.float32)
     tri = np.asarray(tri, np.int64).reshape(-1, 3)
+
+    def make(nm, used, idx):
+        node = kn5write.new_mesh(nm, verts[used], idx.astype(np.uint16), material)
+        if skin is not None:
+            bones, joints, weights = skin
+            node.update(cls=3, bones=[(b, tuple(float(v) for v in m)) for b, m in bones],
+                        joints=np.asarray(joints, np.float32)[used], weights=np.asarray(weights, np.float32)[used])
+            node.pop("lod_raw", None)
+        return node
+
     if len(verts) <= 65535:
-        return [kn5write.new_mesh(name, verts, tri.reshape(-1).astype(np.uint16), material)]
+        return [make(name, np.arange(len(verts)), tri.reshape(-1))]
     out = []
     per = 21000  # triangles per piece (at most 63000 vertices)
     for k, start in enumerate(range(0, len(tri), per)):
         chunk = tri[start:start + per]
         used, remap = np.unique(chunk, return_inverse=True)
-        out.append(kn5write.new_mesh("%s_%d" % (name, k), verts[used], remap.reshape(-1).astype(np.uint16), material))
+        out.append(make("%s_%d" % (name, k), used, remap.reshape(-1)))
     return out
+
+
+def top4(joints, weights):
+    """Per-vertex bone lists of any length -> the 4 strongest (joints, weights), normalised."""
+    joints, weights = np.asarray(joints, np.float64), np.asarray(weights, np.float64)
+    if joints.shape[1] < 4:
+        pad = 4 - joints.shape[1]
+        joints = np.hstack([joints, np.zeros((len(joints), pad))])
+        weights = np.hstack([weights, np.zeros((len(weights), pad))])
+    order = np.argsort(-weights, axis=1)[:, :4]
+    j = np.take_along_axis(joints, order, 1)
+    w = np.take_along_axis(weights, order, 1)
+    total = w.sum(1, keepdims=True)
+    w = np.where(total > 1e-9, w / np.maximum(total, 1e-9), [1, 0, 0, 0])
+    return j.astype(np.float32), w.astype(np.float32)
+
+
+def simple_material(model, name, colour=(0.8, 0.8, 0.8, 1.0), image=None, image_name=None, normal=None,
+                    blend=False, shininess=30.0):
+    """A material with a colour or a picture (bytes in any format Pillow reads); returns its index."""
+    maps = {}
+    if image:
+        try:
+            maps["txDiffuse"] = _texture(model, image_name or name, image)
+        except (OSError, ValueError, Image.DecompressionBombError):
+            pass
+    if "txDiffuse" not in maps:
+        maps["txDiffuse"] = _solid_texture(model, list(colour)[:3] + [1.0], name or "colour")
+    if normal:
+        try:
+            maps["txNormal"] = _texture(model, (image_name or name) + "_nm", normal, normal=True)
+        except (OSError, ValueError, Image.DecompressionBombError):
+            pass
+    shader = "ksPerPixelNM" if "txNormal" in maps else "ksPerPixel"
+    model["materials"].append(kn5write.new_material(str(name or "material")[:60], shader, maps,
+                                                    {"ksSpecularEXP": float(shininess)}, blend=1 if blend else 0))
+    return len(model["materials"]) - 1
+
+
+def read_sibling(base, name):
+    """A texture next to a model, also found by file name alone (exporters write odd paths)."""
+    name = str(name).replace("\\", "/")
+    try:
+        return _safe_sibling(base, name).read_bytes()
+    except ImportError3D:
+        p = Path(base) / Path(name).name
+        if Path(name).name and p.is_file():
+            return p.read_bytes()
+        for sub in ("textures", "Textures", "tex", "images"):
+            q = Path(base) / sub / Path(name).name
+            if Path(name).name and q.is_file():
+                return q.read_bytes()
+    return None
 
 
 def vertex_normals(pos, tri):
@@ -269,13 +314,22 @@ def load_gltf(path):
         mat_index[mi] = len(model["materials"]) - 1
         return mat_index[mi]
 
+    # unique node names: bones and animations find their nodes by name
+    names, seen = [], {}
+    for i, n in enumerate(doc.get("nodes", [])):
+        label = str(n.get("name") or "node%d" % i)[:76]
+        seen[label] = seen.get(label, -1) + 1
+        names.append(label if not seen[label] else "%s_%d" % (label, seen[label]))
+    rigged = []  # skinned meshes go to the top: their bones move them
+
     def node(ni, depth=0):
         if depth > 200:
             raise ImportError3D("the model is nested too deeply")
         n = doc["nodes"][ni]
-        out = kn5write.new_dummy(str(n.get("name") or "node%d" % ni)[:80], node_matrix(n))
+        out = kn5write.new_dummy(names[ni], node_matrix(n))
         if "mesh" in n:
             mesh = doc["meshes"][n["mesh"]]
+            skin = doc["skins"][n["skin"]] if "skin" in n and n["skin"] < len(doc.get("skins", [])) else None
             for pi, prim in enumerate(mesh.get("primitives", [])):
                 if prim.get("mode", 4) != 4 or "POSITION" not in prim.get("attributes", {}):
                     continue
@@ -288,14 +342,70 @@ def load_gltf(path):
                 if len(tri) and (tri.max() >= len(pos) or tri.min() < 0):
                     raise ImportError3D("damaged mesh indices")
                 name = "%s%s" % (mesh.get("name") or out["name"], "_%d" % pi if pi else "")
-                out["children"] += _mesh_nodes(name[:80], pos, nrm, uv, tri, material(prim.get("material")))
+                sk = None
+                if skin is not None and "JOINTS_0" in attrs and "WEIGHTS_0" in attrs:
+                    joints = skin.get("joints", [])
+                    ibm = accessor(skin["inverseBindMatrices"]).reshape(-1, 16) if "inverseBindMatrices" in skin                         else np.tile(np.eye(4).reshape(-1), (len(joints), 1))
+                    bones = [(names[j], tuple(float(v) for v in m)) for j, m in zip(joints, ibm)]
+                    sk = (bones, accessor(attrs["JOINTS_0"]).astype(np.float32),
+                          accessor(attrs["WEIGHTS_0"]).astype(np.float32))
+                made = _mesh_nodes(name[:80], pos, nrm, uv, tri, material(prim.get("material")), sk)
+                (rigged if sk else out["children"]).extend(made)
         out["children"] += [node(c, depth + 1) for c in n.get("children", [])]
         return out
 
     scene = doc.get("scenes", [{}])[doc.get("scene", 0)] if doc.get("scenes") else {"nodes": list(range(len(doc.get("nodes", []))))}
-    model["root"]["children"] = [node(i) for i in scene.get("nodes", [])]
+    model["root"]["children"] = [node(i) for i in scene.get("nodes", [])] + rigged
+    model["animations"] = _gltf_animations(doc, accessor, names)
     _check_vertices(model)
     return model
+
+
+def _gltf_animations(doc, accessor, names, fps=30.0):
+    """glTF animations sampled at 30 frames a second: {name: {node name: {"t", "r", "s"}}}."""
+    out = {}
+    for ai, anim in enumerate(doc.get("animations", [])):
+        chans = {}
+        length = 0.0
+        for ch in anim.get("channels", []):
+            target = ch.get("target", {})
+            if target.get("node") is None or target.get("path") not in ("translation", "rotation", "scale"):
+                continue
+            smp = anim["samplers"][ch["sampler"]]
+            times = accessor(smp["input"]).reshape(-1).astype(np.float64)
+            vals = accessor(smp["output"]).astype(np.float64)
+            if smp.get("interpolation") == "CUBICSPLINE":
+                vals = vals.reshape(len(times), 3, -1)[:, 1]  # keep the values, drop the tangents
+            vals = vals.reshape(len(times), -1)
+            if len(times):
+                chans.setdefault(target["node"], {})[target["path"]] = (times, vals)
+                length = max(length, float(times.max()))
+        if not chans:
+            continue
+        frames = np.arange(0, length + 1e-6, 1 / fps)[:6000]
+        tracks = {}
+        for ni, paths in chans.items():
+            n = doc["nodes"][ni]
+            rest = {"translation": n.get("translation", [0, 0, 0]), "rotation": n.get("rotation", [0, 0, 0, 1]),
+                    "scale": n.get("scale", [1, 1, 1])}
+            got = {}
+            for path, default in rest.items():
+                if path in paths:
+                    tt, vv = paths[path]
+                    if path == "rotation":  # keep neighbouring quaternions on the same side
+                        for k in range(1, len(vv)):
+                            if np.dot(vv[k], vv[k - 1]) < 0:
+                                vv[k] = -vv[k]
+                    col = np.stack([np.interp(frames, tt, vv[:, k]) for k in range(vv.shape[1])], 1)
+                    if path == "rotation":
+                        col /= np.maximum(np.linalg.norm(col, axis=1, keepdims=True), 1e-12)
+                    got[path] = col
+                else:
+                    got[path] = np.tile(np.asarray(default, np.float64), (len(frames), 1))
+            tracks[names[ni]] = {"t": got["translation"].astype(np.float32), "r": got["rotation"].astype(np.float32),
+                                 "s": got["scale"].astype(np.float32)}
+        out[str(anim.get("name") or "animation%d" % ai)[:60]] = tracks
+    return out
 
 
 def node_matrix(n):

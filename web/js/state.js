@@ -7,6 +7,7 @@ export const state = {
   blender: { found: false, path: null },
   cars: [],
   filter: 'all',
+  kind: 'all',       // which kind of entries: all, ac, beamng, model
   search: '',
   layout: 'cards',   // or 'table'
   sort: { key: 'name', dir: 1 },

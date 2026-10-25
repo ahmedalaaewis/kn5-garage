@@ -4,12 +4,14 @@
 
 import { api } from './js/api.js';
 import { initBlender } from './js/blender.js';
+import { initBones, openBones } from './js/bones.js';
 import { initCompare, openCompare } from './js/compare.js';
 import { initDetail } from './js/detail.js';
 import { initEditor } from './js/editor.js';
 import { initImport, openImport } from './js/importer.js';
 import { initLivery, openLivery } from './js/livery.js';
 import { initParts, openParts } from './js/parts.js';
+import { initPrint, openPrint } from './js/printer.js';
 import { $, $$, h } from './js/dom.js';
 import { initExporter, openExportDialog, refreshExports } from './js/exporter.js';
 import { initExtras, openHistory, openSkins, openSpace } from './js/extras.js';
@@ -70,7 +72,7 @@ function initLanguage() {
 
 // ---------------------------------------------------------------- deep links
 // #car=<id>&tab=skins&layout=table&filter=fav&search=…&select=a,b&open=compare|space|skins|history|exports|export
-//  |import|parts|livery &preset=game&viewer=preview|<file.glb>&studio=day&mode=texwire&paint=%23c8102e&paintMode=solid
+//  |import|parts|livery|print &bones=1 &preset=game&viewer=preview|<file.glb>&studio=day&mode=texwire&paint=%23c8102e&paintMode=solid
 //  &steer=20&lights=1&spin=0
 // Handy for bookmarks, and used by tools/screenshots.py.
 
@@ -96,6 +98,7 @@ async function applyDeepLink() {
   if (open === 'history') await openHistory();
   if (open === 'exports') { await refreshExports(); $('#exports').hidden = false; }
   if (open === 'import') openImport();
+  if (open === 'print' && state.selected) openPrint(state.selected);
   if (open === 'parts' && state.selected) await openParts(state.selected);
   if (open === 'livery' && state.selected) await openLivery(state.selected);
   if (open === 'export' && state.selected) {
@@ -110,6 +113,7 @@ async function applyDeepLink() {
     if (p.get('paint')) setPaintColour(p.get('paint'), p.get('paintMode') || 'tint');
     if (p.get('steer')) setSteer(Number(p.get('steer')));
     if (p.get('lights') === '1') setLights(true);
+    if (p.get('bones') === '1') openBones();
   }
   document.body.dataset.ready = '1';  // tells tools/screenshots.py the page is set up
 }
@@ -124,10 +128,12 @@ initEditor();
 initLivery();
 initParts();
 initImport();
+initPrint();
 initCompare();
 initExporter();
 initExtras();
 initViewer();
+initBones();
 (async () => {
   try {
     await Promise.all([startLibrary(), initBlender()]);

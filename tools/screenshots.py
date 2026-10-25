@@ -42,6 +42,8 @@ SHOTS = [  # file, deep link, window size
     ("parts-editor", "car=vel_corsa_gt3&skin=red_17&open=parts&spin=0", (1600, 900)),
     ("livery", "car=lum_aurora_spyder&open=livery&spin=0", (1600, 900)),
     ("import", "car=fjo_bluebird_rally&open=import", (1600, 1000)),
+    ("character", "car=walker&viewer=preview&bones=1&spin=0", (1600, 900)),
+    ("print", "car=tower&open=print", (1600, 1000)),
     ("disk-space", "open=space", (1600, 1000)),
     ("skin-gallery", "open=skins", (1600, 1000)),
     ("italiano", "lang=it&car=fjo_bluebird_rally&tab=skins", (1600, 1000)),

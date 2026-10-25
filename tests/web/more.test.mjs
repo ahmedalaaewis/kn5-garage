@@ -44,7 +44,7 @@ test('t() translates, fills placeholders and falls back to English', () => {
   globalThis.document = { documentElement: {}, querySelectorAll: () => [] };
   setLanguage('it');
   assert.equal(t('Scan'), 'Scansiona');
-  assert.equal(t('{shown} of {total} cars', { shown: 3, total: 9 }), '3 di 9 auto');
+  assert.equal(t('{shown} of {total} in {folders} folders', { shown: 3, total: 9, folders: 2 }), '3 di 9 in 2 cartelle');
   assert.equal(t('Not a known string {x}', { x: 1 }), 'Not a known string 1');
   setLanguage('xx');
   assert.equal(t('Scan'), 'Scan');

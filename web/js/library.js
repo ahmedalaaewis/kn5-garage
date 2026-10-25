@@ -88,7 +88,7 @@ export async function scan() {
 
 // ---------------------------------------------------------------- filtering and sorting
 
-export const visibleCars = () => filterCars(state.cars, state.filter, state.search);
+export const visibleCars = () => filterCars(state.cars, state.filter, state.search, state.kind);
 const sortCars = (cars) => sortBy(cars, state.sort);
 
 export function setFilter(f) {
@@ -104,7 +104,7 @@ export function renderGrid() {
   $('#empty').hidden = state.cars.length > 0;
   const vars = { shown: cars.length, total: state.cars.length, folders: state.roots.length };
   $('#listCount').textContent = !state.cars.length ? t('No folder scanned yet')
-    : state.roots.length > 1 ? t('{shown} of {total} cars in {folders} folders', vars) : t('{shown} of {total} cars', vars);
+    : state.roots.length > 1 ? t('{shown} of {total} in {folders} folders', vars) : t('{shown} of {total}', vars);
   $('#scanTime').textContent = state.scanSeconds != null && state.cars.length ? t('scanned in {s}s', { s: state.scanSeconds.toFixed(1) }) : '';
   const table = state.layout === 'table';
   $('#grid').hidden = table;
@@ -122,7 +122,7 @@ function renderStats() {
   if (!state.cars.length) return;
   const n = (f) => state.cars.filter(f).length;
   const items = [
-    ['all', 'Cars', state.cars.length],
+    ['all', 'All', state.cars.length],
     ['fav', 'Favourites', n((c) => c.favourite)],
     ['ok', 'Ready', n((c) => c.status === 'ok')],
     ['protected', 'Protected', n((c) => c.status === 'protected')],
@@ -130,7 +130,14 @@ function renderStats() {
     ['dup', 'Duplicates', n((c) => (c.duplicates || []).length)],
     ['issues', 'With issues', n((c) => (c.issues || []).length)],
   ];
+  const kinds = [['all', 'Everything'], ['ac', 'Assetto Corsa'], ['beamng', 'BeamNG.drive'], ['model', '3D files']]
+    .map(([k, label]) => [k, label, k === 'all' ? state.cars.length : n((c) => (c.kind || 'ac') === k)]);
+  const kindSeg = kinds.filter(([k, , count]) => k === 'all' || count).length > 2 && h('div', { class: 'seg kind-seg' },
+    ...kinds.filter(([k, , count]) => k === 'all' || count).map(([k, label, count]) => h('button', {
+      class: state.kind === k ? 'on' : '', onclick: () => { state.kind = k; renderGrid(); },
+    }, `${t(label)} ${count}`)));
   el.replaceChildren(
+    kindSeg,
     ...items.map(([f, label, count]) => h('button', {
       class: `stat ${f}` + (state.filter === f ? ' on' : ''), title: t(label),
       onclick: () => setFilter(f),
@@ -147,6 +154,7 @@ export function flagPills(c) {
     identical.length > 0 && h('span', { class: 'flag-pill dup', title: identical.join(', ') }, t('Identical')),
     !identical.length && (c.duplicates || []).length > 0 && h('span', { class: 'flag-pill dup', title: c.duplicates.join(', ') }, t('Duplicate')),
     (c.issues || []).length > 0 && h('span', { class: 'flag-pill issue', title: c.issues.join('\n') }, `${c.issues.length} ⚠`),
+    c.kind && c.kind !== 'ac' && h('span', { class: 'flag-pill kind', title: c.format || c.kindLabel }, c.kind === 'beamng' ? 'BeamNG' : (c.tags || [])[0] || '3D'),
     c.parent && h('span', { class: 'flag-pill info', title: t('Variant of {p}', { p: c.parent }) }, 'Variant'),
     c.hasLod && h('span', { class: 'flag-pill info', title: 'Lower-detail model (Game-ready preset)' }, 'LOD'),
     c.hasAnimations && h('span', { class: 'flag-pill info', title: 'Doors, wipers…' }, 'Anim'),
@@ -217,7 +225,8 @@ function carCard(c, i) {
     onclick: (e) => { e.stopPropagation(); toggleChecked(c.id); },
   });
   const media = h('div', { class: 'card-img' },
-    c.preview ? img(fileUrl(c.id, c.preview), 'shot') : h('div', { class: 'no-shot' }, t('No preview')),
+    c.preview ? img(fileUrl(c.id, c.preview), 'shot')
+      : h('div', { class: 'no-shot' }, c.kind && c.kind !== 'ac' ? (c.format || c.kindLabel) : t('No preview')),
     c.badge && img(fileUrl(c.id, c.badge), 'badge'),
   );
   const meta = [c.brand, c.year].filter(Boolean).join(' · ');
@@ -239,7 +248,7 @@ function carCard(c, i) {
     h('div', { class: 'card-flags' }, flagPills(c)),
     h('div', { class: 'card-body' },
       h('div', { class: 'card-name', title: c.name }, c.name),
-      h('div', { class: 'card-meta' }, meta || c.id),
+      h('div', { class: 'card-meta' }, meta || (c.kind === 'model' ? c.format : c.id)),
       h('div', { class: 'card-meta' }, c.author ? t('by {a}', { a: c.author }) : t('Unknown author')),
       (c.userTags || []).length > 0 && h('div', { class: 'card-tags' }, c.userTags.map((x) => h('span', { class: 'tag' }, x))),
     ),

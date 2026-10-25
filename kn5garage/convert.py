@@ -121,7 +121,8 @@ class Converter:
         self.paint_mode = paint_mode  # "tint" multiplies the livery, "solid" replaces it
         # material names chosen as paint by the user; None = guess from the names
         self.paint_names = {n.lower() for n in paint_names} if paint_names else None
-        self.animations = animations or {}  # {name: tracks} from read_ksanim
+        # {name: tracks} from read_ksanim, or what an imported file (FBX, glTF, BVH) brought along
+        self.animations = animations or kn5.get("animations") or {}
         self.format = fmt or ("stl" if stl else "glb")
         self.stl = self.format == "stl"
         self.obj = self.format == "obj"

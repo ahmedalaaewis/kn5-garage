@@ -69,10 +69,11 @@ class ScanCache:
         except (OSError, ValueError, AttributeError):
             pass
 
-    def summary(self, car_dir, make):
-        """The cached summary if the folder hasn't changed, else make(car_dir) (and cache it)."""
+    def summary(self, car_dir, make, sig=None):
+        """The cached summary if the folder hasn't changed, else make(car_dir) (and cache it).
+        sig: what "unchanged" means for entries that aren't AC car folders."""
         key = str(Path(car_dir).resolve())
-        sig = folder_signature(car_dir)
+        sig = folder_signature(car_dir) if sig is None else sig
         with self.lock:
             e = self.entries.get(key)
             if e and e.get("sig") == sig:

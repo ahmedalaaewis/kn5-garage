@@ -16,6 +16,7 @@ let paintOn = false;
 export const viewer = new Viewer3D($('#stage'), {
   spinBox: $('#spinChk'),
   onInfo: (info) => {
+    emit('viewer-info', info);
     infoChips(info);
     applyPaint();
     renderAnimations(info.animations);

@@ -49,6 +49,7 @@ function menu() {
     card(t('Open a 3D file'), t('.glb, .gltf, .obj, .fbx or .kn5: look at it here, or save it in another format to the output folder.'),
       h('div', { class: 'edit-row' }, fmt, h('span', { class: 'tool-gap' }),
         h('button', { class: 'btn small', onclick: (e) => openModel(e.target, fmt.value) }, t('Choose file…')))),
+    textureCard(),
     card(t('Make a car from a 3D model (beta)'),
       t('The new car takes the physics, sound, wheels and driver of a donor car, and the 3D model replaces its body. You can adjust it in the parts editor before saving.'),
       h('div', { class: 'edit-grid' },
@@ -60,6 +61,31 @@ function menu() {
         onclick: (e) => buildCar(e.target, donor.value, Number(rotate.value), zUp.checked),
       }, t('Choose model…')))),
   ];
+}
+
+function textureCard() {
+  const fmt = h('select', { class: 'select small', 'aria-label': t('Format') },
+    ...['png', 'jpg', 'tga', 'dds', 'webp', 'bmp'].map((f) => h('option', { value: f }, f.toUpperCase())));
+  const size = h('select', { class: 'select small', 'aria-label': t('Largest side') },
+    h('option', { value: '' }, t('Same size')), ...[4096, 2048, 1024, 512, 256].map((n) => h('option', { value: n }, `${n} px`)));
+  const flip = h('input', { type: 'checkbox' });
+  return card(t('Convert textures'),
+    t('DDS, TGA, PSD, PNG, JPEG… for any game or 3D program. The converted copies go to the output folder.'),
+    h('div', { class: 'edit-row' }, fmt, size,
+      h('label', { class: 'check' }, flip, h('span', { title: t('For normal maps: DirectX (games) ⇄ OpenGL (Blender, glTF)') }, t('Flip green'))),
+      h('span', { class: 'tool-gap' }),
+      h('button', { class: 'btn small', onclick: (e) => convertTextures(e.target, fmt.value, size.value, flip.checked) }, t('Choose pictures…'))));
+}
+
+async function convertTextures(btn, format, size, flipGreen) {
+  busy(btn, true);
+  try {
+    const r = await api('/api/textures/convert', { format, flipGreen, ...(size ? { maxSize: Number(size) } : {}) });
+    if (!r.files.length && !r.failed?.length) return;
+    const msg = [t('Converted {n} picture(s)', { n: r.files.length }), ...(r.failed || []).map((f) => `${f.from}: ${f.error}`)].join(' · ');
+    flash(msg, !r.files.length, r.files.length ? { label: t('Show folder'), run: () => api('/api/open', { what: 'textures' }) } : null);
+  } catch (e) { flash(e.message, true); }
+  finally { busy(btn, false); }
 }
 
 // ---------------------------------------------------------------- mods

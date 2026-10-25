@@ -345,6 +345,62 @@ def placeholder_preview(base, stripe, name, size=(640, 360)):
     return img
 
 
+WALKER_BVH = """HIERARCHY
+ROOT Hips
+{
+  OFFSET 0 95 0
+  CHANNELS 6 Xposition Yposition Zposition Zrotation Xrotation Yrotation
+  JOINT Spine { OFFSET 0 22 0 CHANNELS 3 Zrotation Xrotation Yrotation
+    JOINT Neck { OFFSET 0 30 0 CHANNELS 3 Zrotation Xrotation Yrotation
+      JOINT Head { OFFSET 0 10 0 CHANNELS 3 Zrotation Xrotation Yrotation End Site { OFFSET 0 18 0 } } }
+    JOINT LeftArm { OFFSET 17 28 0 CHANNELS 3 Zrotation Xrotation Yrotation
+      JOINT LeftForeArm { OFFSET 0 -28 0 CHANNELS 3 Zrotation Xrotation Yrotation End Site { OFFSET 0 -25 0 } } }
+    JOINT RightArm { OFFSET -17 28 0 CHANNELS 3 Zrotation Xrotation Yrotation
+      JOINT RightForeArm { OFFSET 0 -28 0 CHANNELS 3 Zrotation Xrotation Yrotation End Site { OFFSET 0 -25 0 } } } }
+  JOINT LeftUpLeg { OFFSET 10 0 0 CHANNELS 3 Zrotation Xrotation Yrotation
+    JOINT LeftLeg { OFFSET 0 -45 0 CHANNELS 3 Zrotation Xrotation Yrotation End Site { OFFSET 0 -45 0 } } }
+  JOINT RightUpLeg { OFFSET -10 0 0 CHANNELS 3 Zrotation Xrotation Yrotation
+    JOINT RightLeg { OFFSET 0 -45 0 CHANNELS 3 Zrotation Xrotation Yrotation End Site { OFFSET 0 -45 0 } } }
+}
+MOTION
+"""
+
+
+def walker_motion(frames=40):
+    """A simple walk: legs and arms swing, the body moves forward."""
+    import math
+    lines = ["Frames: %d" % frames, "Frame Time: 0.0333333"]
+    for f in range(frames):
+        a = math.sin(f / frames * 2 * math.pi)
+        knee = max(0.0, -math.cos(f / frames * 2 * math.pi)) * 35
+        row = [0, 95 + abs(a) * 2, f * 2.5, 0, 0, 0,      # hips
+               0, 4, 0, 0, 0, 0, 0, -4, 0,                 # spine, neck, head
+               8, -25 * a, 0, 0, -20, 0,                    # left arm, forearm
+               -8, 25 * a, 0, 0, -20, 0,                    # right arm, forearm
+               0, 28 * a, 0, 0, knee, 0,                    # left leg
+               0, -28 * a, 0, 0, 35 - knee, 0]              # right leg
+        lines.append(" ".join("%.3f" % v for v in row))
+    return "\n".join(lines) + "\n"
+
+
+def build_figures(folder):
+    """Loose 3D files next to the cars: a motion-capture walker and a figure to 3D print."""
+    figs = Path(folder) / "figures"
+    figs.mkdir(parents=True, exist_ok=True)
+    (figs / "walker.bvh").write_text(WALKER_BVH + walker_motion(), encoding="utf-8")
+    tris = []
+    for w, h0, h1 in ((20, 0, 8), (14, 8, 16), (8, 16, 24), (3, 24, 40)):
+        c = [(-w, h0, -w), (w, h0, -w), (w, h0, w), (-w, h0, w), (-w, h1, -w), (w, h1, -w), (w, h1, w), (-w, h1, w)]
+        for a, b, d, e in ((0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7), (4, 5, 6, 7), (3, 2, 1, 0)):
+            tris += [(c[a], c[b], c[d]), (c[a], c[d], c[e])]
+    lines = ["solid tower"]
+    for t in tris:
+        lines.append("facet normal 0 0 0\nouter loop\n" + "".join("vertex %g %g %g\n" % v for v in t)
+                     + "endloop\nendfacet")
+    (figs / "tower.stl").write_text("\n".join(lines) + "\nendsolid tower\n", encoding="utf-8")
+    return figs
+
+
 def main(argv=None):
     folder = Path((argv or sys.argv[1:] or [str(ROOT / ".dev" / "demo_cars")])[0])
     folder.mkdir(parents=True, exist_ok=True)
@@ -360,6 +416,7 @@ def main(argv=None):
     ui = json.loads((copy / "ui" / "ui_car.json").read_text(encoding="utf-8"))
     ui["name"] += " (old download)"
     (copy / "ui" / "ui_car.json").write_text(json.dumps(ui, indent=2, ensure_ascii=False), encoding="utf-8")
+    build_figures(folder)
     print("demo garage ready in", folder)
     return folder
 

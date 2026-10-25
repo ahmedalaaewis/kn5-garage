@@ -34,9 +34,11 @@ export function csvCell(v) {
   return /[",\n\r]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 
-export function filterCars(cars, filter = 'all', search = '') {
+// kind: 'all', or one kind of entry ('ac' cars, 'beamng' vehicles, 'model' 3D files)
+export function filterCars(cars, filter = 'all', search = '', kind = 'all') {
   const q = search.toLowerCase();
   return cars.filter((c) => {
+    if (kind !== 'all' && (c.kind || 'ac') !== kind) return false;
     if (filter === 'fav' && !c.favourite) return false;
     if (filter === 'ok' && c.status !== 'ok') return false;
     if (filter === 'protected' && c.status !== 'protected') return false;
@@ -44,7 +46,8 @@ export function filterCars(cars, filter = 'all', search = '') {
     if (filter === 'dup' && !(c.duplicates || []).length) return false;
     if (filter === 'issues' && !(c.issues || []).length) return false;
     if (!q) return true;
-    return [c.name, c.brand, c.author, c.id, c.year, c.carClass, ...(c.tags || []), ...(c.userTags || [])]
+    return [c.name, c.brand, c.author, c.id, c.year, c.carClass, c.format, c.kindLabel, ...(c.tags || []),
+      ...(c.userTags || [])]
       .some((v) => v && String(v).toLowerCase().includes(q));
   });
 }

@@ -339,6 +339,9 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 5px; }
 .flag-pill.dup { color: #b07aff; border-color: rgba(176, 122, 255, .45); }
 .flag-pill.issue { color: var(--warn); border-color: rgba(255, 176, 32, .4); }
 .flag-pill.info { color: var(--blue); border-color: rgba(77, 163, 255, .35); }
+.flag-pill.kind { color: #7ee0b5; border-color: rgba(126, 224, 181, .4); }
+.stats .kind-seg { margin-right: 6px; }
+.stats .kind-seg button { padding: 6px 10px; font-size: 12.5px; }
 
 /* ---- library table ---- */
 .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
@@ -542,6 +545,12 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 5px; }
 .import-item { gap: 8px; font-size: 13px; color: var(--text); }
 .import-item .muted { font-size: 12px; }
 #partsPanel { width: 380px; }
+.action-tools { display: flex; justify-content: center; gap: 8px; margin-top: 6px; }
+.notice.ok-note { border-color: rgba(52, 211, 153, .4); background: rgba(52, 211, 153, .08); }
+#bonesPanel > .parts-items { max-height: 38vh; flex: none; }
+.bone-slider { display: grid; grid-template-columns: 18px 1fr 46px; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); }
+.bone-slider input { accent-color: var(--accent); }
+.bone-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
 #partsPanel > .parts-items { max-height: 34vh; flex: none; }
 .side-panel .search { flex: none; }
 .parts-items.short { max-height: 160px; }

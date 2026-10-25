@@ -24,7 +24,7 @@
       </svg>
       <div>
         <div class="brand-name">KN5 <span>GARAGE</span></div>
-        <div class="brand-sub">Assetto Corsa → glTF / Blender <span id="appVersion"></span></div>
+        <div class="brand-sub">Cars · characters · 3D models <span id="appVersion"></span></div>
       </div>
     </div>
     <div class="top-actions">
@@ -52,7 +52,7 @@
       <button class="btn primary" id="scanBtn" data-i18n>Scan</button>
     </div>
     <div class="filters">
-      <input id="search" class="search" data-i18n-placeholder="Search cars, brands, authors, tags…  ( / )" placeholder="Search cars, brands, authors, tags…  ( / )">
+      <input id="search" class="search" data-i18n-placeholder="Search names, brands, authors, tags…  ( / )" placeholder="Search names, brands, authors, tags…  ( / )">
       <div class="seg" id="filterSeg">
         <button data-f="all" class="on" data-i18n>All</button>
         <button data-f="fav" data-i18n>Favourites</button>
@@ -85,7 +85,7 @@
       </div>
       <div id="grid" class="grid"></div>
       <div id="table" class="table-wrap" hidden></div>
-      <div id="noMatch" class="muted no-match" hidden data-i18n>No cars match the search or filter.</div>
+      <div id="noMatch" class="muted no-match" hidden data-i18n>Nothing matches the search or filter.</div>
       <div id="empty" class="empty">
         <div class="empty-art">
           <svg viewBox="0 0 120 60" aria-hidden="true">
@@ -95,15 +95,14 @@
             <path d="M4 52h112" stroke="currentColor" stroke-width="2" stroke-dasharray="4 6"/>
           </svg>
         </div>
-        <h2 data-i18n>Point me at your cars</h2>
-        <p>Add one or more folders: single cars, <code>assettocorsa\content\cars</code>, or mod folders anywhere.
-          They're scanned together. Car folders are only read, never changed.</p>
+        <h2 data-i18n>Point me at your mods and 3D files</h2>
+        <p data-i18n>Add one or more folders with game mods (Assetto Corsa cars, BeamNG.drive vehicles) or 3D files (characters, figures, props). They're scanned together and only read.</p>
         <button class="btn primary" id="emptyBrowse" data-i18n>Add folder</button>
       </div>
     </section>
 
     <aside class="detail-col" id="detail">
-      <div class="detail-empty muted" data-i18n>Select a car to see its details</div>
+      <div class="detail-empty muted" data-i18n>Select something to see its details</div>
     </aside>
   </main>
 
@@ -168,6 +167,7 @@
         <input type="range" id="steerRange" min="-35" max="35" value="0" step="1" aria-label="Steering angle"></label>
       <button class="btn ghost small toggle" id="lightsBtn" hidden aria-pressed="false" data-i18n>Lights</button>
       <button class="btn ghost small toggle" id="measureBtn" aria-pressed="false" data-i18n>Measure</button>
+      <button class="btn ghost small toggle" id="bonesBtn" hidden aria-pressed="false" data-i18n>Bones</button>
       <span class="measure-info" id="measureInfo"></span>
       <select class="select small" id="animSel" title="Play the car's animations (doors, wipers…)" hidden></select>
       <div class="tool-gap"></div>
@@ -178,7 +178,7 @@
     </div>
     <div class="skin-strip" id="viewerSkins"></div>
     <div class="viewer-stage" id="stage"><div class="hover-tip" id="hoverTip" hidden></div>
-      <aside class="side-panel" id="liveryPanel" hidden></aside><aside class="side-panel" id="partsPanel" hidden></aside></div>
+      <aside class="side-panel" id="liveryPanel" hidden></aside><aside class="side-panel" id="partsPanel" hidden></aside><aside class="side-panel" id="bonesPanel" hidden></aside></div>
     <div class="viewer-info" id="viewerInfo"></div>
   </div>
 
@@ -222,7 +222,7 @@
 
   <div class="modal" id="compareDlg" hidden>
     <div class="modal-card wide">
-      <div class="modal-head"><h3 data-i18n>Compare cars</h3><button class="icon-btn" data-close aria-label="Close">×</button></div>
+      <div class="modal-head"><h3 data-i18n>Compare</h3><button class="icon-btn" data-close aria-label="Close">×</button></div>
       <div class="modal-body" id="compareBody"></div>
     </div>
   </div>
@@ -261,6 +261,17 @@
       <div class="modal-foot">
         <button class="btn ghost" data-close data-i18n>Cancel</button>
         <button class="btn primary" id="saveGo" data-i18n>Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="printDlg" hidden>
+    <div class="modal-card">
+      <div class="modal-head"><h3 id="printTitle" data-i18n>3D print</h3><button class="icon-btn" data-close aria-label="Close">×</button></div>
+      <div class="modal-body" id="printBody"></div>
+      <div class="modal-foot">
+        <button class="btn ghost" data-close data-i18n>Close</button>
+        <button class="btn primary" id="printGo" data-i18n>Make the file</button>
       </div>
     </div>
   </div>

@@ -98,8 +98,9 @@
         </svg>
         <h1>KN5 <span>GARAGE</span></h1>
       </div>
-      <p class="tagline">A garage for Assetto Corsa car mods that runs entirely on your PC: browse your collection,
-        edit cars, paint liveries, install mods, and export to Blender, game engines, 3D viewers and 3D printers.</p>
+      <p class="tagline">A garage for game mods and 3D models that runs entirely on your PC: Assetto Corsa cars,
+        BeamNG.drive vehicles, characters, figures and props in 12 formats. Edit, pose, paint, print, convert, and
+        export to Blender, game engines, 3D viewers and 3D printers.</p>
       <div class="cta">
         <a class="btn primary" href="#run">Download and run</a>
         <a class="btn" href="#pictures">Pictures</a>
@@ -122,6 +123,11 @@
         <div class="feature"><b>Edit cars</b><p>Power, torque, weight, gearing and turbo, and the specs in the game menus. Save as a new car, or change the original with a backup you can undo.</p></div>
         <div class="feature"><b>Your own livery</b><p>Paint in Photoshop, Illustrator, GIMP or any image program; the 3D car updates every time you save, then installs as a new skin.</p></div>
         <div class="feature"><b>Parts editor</b><p>Hide, remove, move, rotate, scale and recolour parts, or swap in parts from other cars and 3D files.</p></div>
+        <div class="feature"><b>12 3D formats</b><p>.kn5, .glb, .gltf, .vrm, .fbx, .dae, .obj, .stl, .ply, .3ds, .pmx and .bvh, read without other programs, rigs and animations included.</p></div>
+        <div class="feature"><b>Beyond one game</b><p>BeamNG.drive vehicles (folders and zip mods) and loose 3D files sit in the library next to Assetto Corsa cars.</p></div>
+        <div class="feature"><b>Characters</b><p>Show the skeleton, pose any bone, play animations: Mixamo FBX, MMD, VRM, BVH motion capture.</p></div>
+        <div class="feature"><b>3D printing</b><p>Real size in mm, repair, wall thickness for thin surfaces, cut into pieces, STL or 3MF.</p></div>
+        <div class="feature"><b>Textures</b><p>DDS, TGA, PSD and more to PNG, JPEG, TGA, DDS or WebP; resize; flip normal maps.</p></div>
         <div class="feature"><b>Import</b><p>Install mods and skin packs from .zip, .7z and .rar, open .glb / .gltf / .obj / .fbx files, and make a car from a 3D model (beta).</p></div>
         <div class="feature"><b>Blender ready</b><p>One click opens an export in a studio scene with sorted parts, lights and a camera.</p></div>
         <div class="feature"><b>Tidy up</b><p>Finds duplicates and identical copies, shows disk space, and lists missing files.</p></div>
@@ -150,6 +156,8 @@
       <div class="gallery">
         <figure><img src="docs/screenshots/viewer-night.png" alt="3D viewer at night with the lights on and the front wheels turned" width="1600" height="900" loading="lazy"><figcaption><b>Night studio</b>, lights on, steering turned</figcaption></figure>
         <figure><img src="docs/screenshots/viewer-day.png" alt="3D viewer in daylight with the skin strip" width="1600" height="900" loading="lazy"><figcaption><b>Day studio</b> and the skin strip</figcaption></figure>
+        <figure><img src="docs/screenshots/character.png" alt="A motion-capture skeleton with the Bones panel for posing" width="1600" height="900" loading="lazy"><figcaption><b>Characters</b>: skeleton, bones, posing</figcaption></figure>
+        <figure><img src="docs/screenshots/print.png" alt="3D print: height, cuts, repair and wall thickness" width="1600" height="1000" loading="lazy"><figcaption><b>3D print</b> at a real size, repaired and cut</figcaption></figure>
         <figure><img src="docs/screenshots/parts-editor.png" alt="The parts editor: a part selected on the car, with move, colour and swap tools" width="1600" height="900" loading="lazy"><figcaption><b>Parts editor</b>: hide, move, recolour, swap</figcaption></figure>
         <figure><img src="docs/screenshots/livery.png" alt="The livery studio: paint textures to edit in an image program, with a live 3D preview" width="1600" height="900" loading="lazy"><figcaption><b>Livery studio</b> with live preview</figcaption></figure>
         <figure><img src="docs/screenshots/edit.png" alt="The Edit tab: physics, menu specs and power curve" width="1600" height="1700" loading="lazy"><figcaption><b>Edit</b> power, weight, gearing and specs</figcaption></figure>
@@ -209,11 +217,19 @@
         Programs inside archives are never unpacked. Open <code>.glb</code>, <code>.gltf</code>, <code>.obj</code>,
         <code>.fbx</code> and <code>.kn5</code> files to view or convert, or make a new car from a 3D model on a donor
         car's physics, sound and wheels (beta).</p>
+      <h3>Formats and other games</h3>
+      <p>The scan finds Assetto Corsa cars, BeamNG.drive vehicles (folders and zip mods, shown in their default
+        configuration with their skins) and every 3D file the app reads. SketchUp <code>.skb</code> / <code>.skp</code>
+        files aren't public formats: export <code>.dae</code> from SketchUp. Forza Horizon and CarX Drift Racing keep their
+        files encrypted and make liveries in their own editors, so they can't be opened.</p>
+      <h3>3D printing and textures</h3>
+      <p><b>3D print…</b> makes STL or 3MF at a real height, repaired, with walls for thin surfaces and cut into pieces.
+        <b>Import &gt; Convert textures</b> turns DDS, TGA, PSD and more into PNG, JPEG, TGA, DDS, WebP or BMP.</p>
       <h3>3D viewer</h3>
       <ul class="pill-list">
         <li>Textured · wire · clay</li><li>Studio · day · night</li><li>Shadows</li><li>Paint and paint parts</li>
         <li>Steering</li><li>Lights</li><li>Animations</li><li>Measure</li><li>Part names on hover</li>
-        <li>Snapshot</li><li>Turntable</li><li>Video</li><li>Open in Blender</li>
+        <li>Bones and posing</li><li>Snapshot</li><li>Turntable</li><li>Video</li><li>Open in Blender</li>
       </ul>
     </section>
 
@@ -242,7 +258,7 @@
       <h2>Building and contributing</h2>
       <ul>
         <li><code>run_tests.bat</code> runs the unit, security, web and end-to-end tests.</li>
-        <li><code>build_exe.bat</code> builds <code>dist\KN5Garage.exe</code>; pushing a tag like <code>v1.2.0</code> builds, tests and publishes it on GitHub.</li>
+        <li><code>build_exe.bat</code> builds <code>dist\KN5Garage.exe</code>; pushing a tag like <code>v1.3.0</code> builds, tests and publishes it on GitHub.</li>
         <li><code>tools/make_demo_garage.py</code> builds the demo cars; <code>tools/screenshots.py</code> remakes these pictures.</li>
       </ul>
       <p>How the code is organised and the project rules: <a href="CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
