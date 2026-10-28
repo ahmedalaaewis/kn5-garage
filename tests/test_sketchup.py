@@ -57,10 +57,10 @@ def square_with_hole():
     return v, e, f
 
 
-def skp_bytes(version="26.1.194", red=(200, 30, 30)):
+def skp_bytes(version="26.1.194", red=(200, 30, 30), move=(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0, 0, 1)):
+    """move: the group's transform as SketchUp stores it (default: 100 inches along X)."""
     v, e, f = square_with_hole()
     definition = rec(5500, entities(v, e, f, own_id=500), rec(5502, b"Plate"))
-    move = (1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0, 0, 1)  # 100 inches along X
     root = entities([], [], [], instances=[(500, move, 0x8001)])
     materials = rec(12500, rec(12501, rec(13000, ident(0x8001), rec(13004, b"Red"))))
     model = rec(0x01F4, rec(0x0063, b"\0\0\0\0"), rec(0x01F6, root), rec(0x01F7, materials),
@@ -107,6 +107,16 @@ class SketchUpTests(unittest.TestCase):
         from kn5garage.textures import decode_image
         self.assertEqual(decode_image(m["textures"][mat["maps"]["txDiffuse"]]).getpixel((0, 0))[:3], (200, 30, 30))
         self.assertEqual(m["sketchup_version"], "26.1.194")
+
+    def test_rotation_is_stored_row_by_row(self):
+        # a quarter turn about Z, as SketchUp writes it: rows (0 -1 0), (1 0 0), (0 0 1);
+        # read the other way round, parts of real models fly apart
+        p = self.dir / "turned.skp"
+        p.write_bytes(skp_bytes(move=(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1)))
+        lo, hi = importer.bounds(formats.load(p)["root"])
+        # the 10 x 10 inch square at x, y >= 0 turns to x <= 0; SketchUp's Y becomes -Z here
+        np.testing.assert_allclose(lo, [-10 * 0.0254, 0, -10 * 0.0254], atol=1e-9)
+        np.testing.assert_allclose(hi, [0, 0, 0], atol=1e-9)
 
     def test_backup_files_and_old_versions(self):
         skb = self.dir / "plate.skb"

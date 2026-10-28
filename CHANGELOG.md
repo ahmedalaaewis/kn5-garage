@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2
+
+- **SketchUp:** groups and components now sit exactly in place (their rotations were read in the wrong
+  order, so turned parts drifted apart). Checked against the thumbnails SketchUp saves in each file.
+
 ## 1.3.1
 
 - **SketchUp:** `.skp` models and `.skb` backups from SketchUp 2021 and newer open directly (faces with

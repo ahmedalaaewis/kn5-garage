@@ -9,7 +9,7 @@ and model.dat, a tree of tagged records (2-byte tag, 4-byte length, data). What 
     3000 edge: 3001 / 3002 vertex ids
     3500 face: 2000/2001 material id, 3503 back material id, 3501 plane, 3502 loops
              (4500 loop -> 4501 -> 4000 edge use -> 4001 edge id)
-    6500 group / component instance: 2001 material, 6502 transform (3 axes, origin, w),
+    6500 group / component instance: 2001 material, 6502 transform (3 x 3 by rows, origin, w),
              6503 definition id
     01f6 the model's own entities, 01f7 materials (13000: 1502 id, 13004 name)
 
@@ -276,7 +276,8 @@ class Definition:
                     continue
                 v = struct.unpack("<13d", t[:104])
                 m = np.eye(4)
-                m[:3, 0], m[:3, 1], m[:3, 2], m[:3, 3] = v[0:3], v[3:6], v[6:9], v[9:12]
+                m[:3, :3] = np.reshape(v[:9], (3, 3))  # the 3 x 3 part row by row (checked against SketchUp's thumbnails)
+                m[:3, 3] = v[9:12]
                 if abs(v[12]) > 1e-12 and v[12] != 1.0:
                     m[:3, :] /= v[12]
                 if not np.all(np.isfinite(m)):
