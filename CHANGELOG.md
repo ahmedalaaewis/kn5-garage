@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1
+
+- **SketchUp:** `.skp` models and `.skb` backups from SketchUp 2021 and newer open directly (faces with
+  holes, groups and components with their transforms, materials and colours inherited the SketchUp way).
+  Files from older SketchUp versions get a clear message.
+
 ## 1.3.0
 
 - **Not only Assetto Corsa:** BeamNG.drive vehicles (folders and zip mods: default configuration,

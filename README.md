@@ -1,7 +1,7 @@
 # KN5 Garage
 
 A garage for game mods and 3D models that runs entirely on your PC: Assetto Corsa cars, BeamNG.drive
-vehicles, characters, figures and props in 12 3D formats. Browse your collection, edit cars (power,
+vehicles, characters, figures and props in 14 3D formats. Browse your collection, edit cars (power,
 weight, liveries, parts), pose characters, install mods, print figures, convert textures, and turn it
 all into files for **Blender**, **game engines**, **3D viewers** and **3D printers**.
 
@@ -10,8 +10,8 @@ all into files for **Blender**, **game engines**, **3D viewers** and **3D printe
 - Browse your whole collection: Assetto Corsa cars (previews, authors, specs, power curves, skins,
   CSP features), **BeamNG.drive** vehicles (folders and zip mods, with their default configuration and
   skins) and loose **3D files**, all in one library.
-- Open **.kn5, .glb, .gltf, .vrm, .fbx, .dae, .obj, .stl, .ply, .3ds, .pmx and .bvh** without any
-  other program (FBX, COLLADA and MikuMikuDance read natively; rigs and animations come along).
+- Open **.kn5, .glb, .gltf, .vrm, .fbx, .dae, .obj, .stl, .ply, .3ds, .pmx, .bvh, .skp and .skb** without
+  any other program (FBX, COLLADA, SketchUp and MikuMikuDance read natively; rigs and animations come along).
 - Export to **glTF (.glb)**, **OBJ**, **FBX** (through Blender) or **STL**, with presets for
   Blender renders, game engines and 3D printing, a new paint colour and headlights on.
 - Look at any car in 3D first: paint colours, steering, lights, day / night studios,
@@ -178,7 +178,7 @@ Corsa / BeamNG.drive / 3D files** above the cards filters by kind.
 | `.obj` `.stl` `.ply` `.3ds` | ✓ | with `.mtl`, textures and colours where the format has them |
 | `.pmx` | ✓ | MikuMikuDance characters with bones and textures |
 | `.bvh` | ✓ | motion capture: the skeleton is drawn and the motion plays |
-| `.skb` `.skp` | – | SketchUp: its format isn't public; export `.dae` from SketchUp |
+| `.skp` `.skb` | ✓ | SketchUp 2021 and newer (`.skb` is its backup): faces, groups, components and colours; textured materials show in their average colour. Older files: save them again in a newer SketchUp, or export `.dae` |
 
 **Bones** in the 3D viewer (shown for rigged models) draws the skeleton and lists every bone: pick
 one and turn it with the X / Y / Z sliders, then take a **Snapshot** or **Turntable**.

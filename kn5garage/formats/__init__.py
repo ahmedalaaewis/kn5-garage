@@ -1,7 +1,7 @@
 """Every 3D format the app reads, behind one function: load(path) -> a kn5-like model.
 
 Readers live next to this file (simple.py: STL, PLY, 3DS; collada.py: DAE; fbx.py: FBX;
-characters.py: BVH, PMX); glTF / GLB / VRM and OBJ are in importer.py, .kn5 in kn5.py."""
+characters.py: BVH, PMX; sketchup.py: SKP); glTF / GLB / VRM and OBJ are in importer.py, .kn5 in kn5.py."""
 
 import struct
 import zlib
@@ -21,12 +21,11 @@ FORMATS = {
     ".3ds": ("3D Studio", "kn5garage.formats.simple", "load_3ds"),
     ".bvh": ("BVH motion capture", "kn5garage.formats.characters", "load_bvh"),
     ".pmx": ("MikuMikuDance PMX", "kn5garage.formats.characters", "load_pmx"),
+    ".skp": ("SketchUp model", "kn5garage.formats.sketchup", "load_skp"),
+    ".skb": ("SketchUp backup", "kn5garage.formats.sketchup", "load_skp"),
 }
 # known but unreadable: what to tell the user
 UNSUPPORTED = {
-    ".skb": "a SketchUp backup (the same as .skp). SketchUp's format isn't public: open it in SketchUp "
-            "(rename it to .skp) and export it as .dae, .fbx or .obj",
-    ".skp": "a SketchUp model. SketchUp's format isn't public: export it from SketchUp as .dae, .fbx or .obj",
     ".blend": "a Blender file: open it in Blender and export .glb or .fbx",
     ".max": "a 3ds Max scene: export it from 3ds Max as .fbx",
     ".ma": "a Maya scene: export it from Maya as .fbx",
